@@ -40,7 +40,7 @@ jobs:  # basic units of work in a run
       - run: mix xref unreachable --include-siblings
       - run: mix credo --strict
       - run: mix test
-      - run: mix dialyzer
+      - run: mix dialyzer --halt-exit-status
 
       - save_cache: # don't forget to save a *build* cache, too
           key: v1-build-cache-{{ .Branch }}
