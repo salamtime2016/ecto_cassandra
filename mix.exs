@@ -31,6 +31,7 @@ defmodule EctoCassandra.MixProject do
       {:credo, "~> 0.10.0", only: ~w(dev test)a},
       {:dialyxir, "~> 1.0.0-rc.3", only: ~w(dev test)a, runtime: false},
       {:ecto, "~> 2.2"},
+      {:ex_doc, "~> 0.14", only: :dev},
       {:ex_machina, "~> 2.2", only: :test},
       {:excoveralls, "~> 0.8", only: :test},
       {:faker, "~> 0.10", only: :test},
