@@ -1,5 +1,7 @@
 # EctoCassandra
 
+[![CircleCI](https://circleci.com/gh/salamtime2016/ecto_cassandra/tree/master.svg?style=svg)](https://circleci.com/gh/salamtime2016/ecto_cassandra/tree/master)
+
 `Cassandra` database adapter for **Ecto** . Based on [https://github.com/lexhide/xandra](https://github.com/lexhide/xandra) library.
 
 ## Installation
