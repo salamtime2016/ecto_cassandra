@@ -1,21 +1,18 @@
 # EctoCassandra
 
-**TODO: Add description**
+`Cassandra` database adapter for **Ecto** . Based on [https://github.com/lexhide/xandra](https://github.com/lexhide/xandra) library.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
+The package can be installed
 by adding `ecto_cassandra` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:ecto_cassandra, "~> 0.1.0"}
+    {:ecto_cassandra, github: "salamtime2016/ecto_cassandra"}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/ecto_cassandra](https://hexdocs.pm/ecto_cassandra).
-
+© Salam team 2018
