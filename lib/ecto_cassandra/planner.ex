@@ -4,6 +4,8 @@ defmodule EctoCassandra.Planner do
   """
 
   require Logger
+  alias Ecto.Query
+
   @behaviour Ecto.Adapter
 
   @doc false
@@ -19,6 +21,7 @@ defmodule EctoCassandra.Planner do
   @doc """
   Automatically generate next ID for binary keys, leave sequence keys empty for generation on insert.
   """
+  @spec autogenerate(atom) :: String.t() | no_return
   def autogenerate(:embed_id), do: Ecto.UUID.generate()
   def autogenerate(:binary_id), do: Ecto.UUID.autogenerate()
 
@@ -29,7 +32,15 @@ defmodule EctoCassandra.Planner do
     )
   end
 
-  def prepare(operation, query), do: raise_not_implemented_error()
+  @spec prepare(atom :: :all | :update_all | :delete_all, Query.t()) ::
+          {:cache, term} | {:nocache, term} | no_return
+  def prepare(operation, query) do
+    IO.inspect(operation)
+    IO.inspect(query)
+
+    {:ok, prepared} = EctoCassandra.Conn |> Process.whereis() |> Xandra.prepare(query)
+    {:cache, prepared}
+  end
 
   def execute(repo, query_meta, query_cache, sources, preprocess, opts),
     do: raise_not_implemented_error()
