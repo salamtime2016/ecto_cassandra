@@ -11,12 +11,24 @@ defmodule EctoCassandra.Planner do
   @doc false
   defmacro __before_compile__(_env), do: :ok
 
-  def ensure_all_started(_repo, type) do
+  @spec ensure_all_started(any, type :: :application.restart_type()) ::
+          {:ok, [atom]} | {:error, atom}
+  def ensure_all_started(_repo, _type) do
     {:ok, []}
   end
 
-  def child_spec(_repo, _opts),
-    do: Supervisor.Spec.supervisor(Supervisor, [[], [strategy: :one_for_one]])
+  @spec child_spec(any, keyword) :: Supervisor.Spec.spec()
+  def child_spec(_repo, opts) do
+    keyspace = Keyword.fetch!(opts, :keyspace)
+
+    opts =
+      Keyword.merge(opts,
+        name: EctoCassandra.Conn,
+        after_connect: &Xandra.execute(&1, "USE #{keyspace}")
+      )
+
+    Supervisor.Spec.supervisor(Xandra, [opts], restart: :permanent, id: EctoCassandra.Conn)
+  end
 
   @doc """
   Automatically generate next ID for binary keys, leave sequence keys empty for generation on insert.
