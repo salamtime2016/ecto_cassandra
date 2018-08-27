@@ -6,6 +6,7 @@ defmodule EctoCassandra.Adapter do
   @behaviour Ecto.Adapter
   @adapter EctoCassandra.Planner
   @storage_adapter EctoCassandra.Storage
+  @migration_adapter EctoCassandra.Migration
 
   @doc false
   defmacro __before_compile__(_env), do: :ok
@@ -55,9 +56,6 @@ defmodule EctoCassandra.Adapter do
   @doc false
   defdelegate dumpers(primitive, type), to: @adapter
 
-  @doc false
-  def supports_ddl_transaction?, do: false
-
   @behaviour Ecto.Adapter.Storage
 
   @doc false
@@ -65,4 +63,12 @@ defmodule EctoCassandra.Adapter do
 
   @doc false
   defdelegate storage_up(opts), to: @storage_adapter
+
+  @behaviour Ecto.Adapter.Migration
+
+  @doc false
+  defdelegate execute_ddl(repo, command, options), to: @migration_adapter
+
+  @doc false
+  def supports_ddl_transaction?, do: false
 end
