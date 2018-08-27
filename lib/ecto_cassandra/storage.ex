@@ -10,10 +10,13 @@ defmodule EctoCassandra.Storage do
   @spec storage_up(keyword) :: :ok | {:error, any}
   def storage_up(options) when is_list(options) do
     keyspace = Keyword.fetch!(options, :keyspace)
+    # TODO: implement replication opts
     command = "CREATE KEYSPACE #{keyspace} WITH REPLICATION = #{@replication};"
 
-    case Xandra.execute!(EctoCassandra.Conn, command) do
-      %{effect: "CREATED"} -> :ok
+    with {:ok, conn} <- Xandra.start_link(options),
+         %{effect: "CREATED"} <- Xandra.execute!(conn, command) do
+      :ok
+    else
       err -> {:error, err}
     end
   end
@@ -22,8 +25,10 @@ defmodule EctoCassandra.Storage do
   def storage_down(options) when is_list(options) do
     keyspace = Keyword.fetch!(options, :keyspace)
 
-    case Xandra.execute!(EctoCassandra.Conn, "DROP KEYSPACE #{keyspace};") do
-      %{effect: "DROPPED"} -> :ok
+    with {:ok, conn} <- Xandra.start_link(options),
+         %{effect: "DROPPED"} <- Xandra.execute!(conn, "DROP KEYSPACE #{keyspace};") do
+      :ok
+    else
       err -> {:error, err}
     end
   end
