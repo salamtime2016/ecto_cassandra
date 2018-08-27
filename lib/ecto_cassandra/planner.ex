@@ -47,11 +47,9 @@ defmodule EctoCassandra.Planner do
   @spec prepare(atom :: :all | :update_all | :delete_all, Query.t()) ::
           {:cache, term} | {:nocache, term} | no_return
   def prepare(operation, query) do
-    IO.inspect(operation)
-    IO.inspect(query)
-
-    {:ok, prepared} = EctoCassandra.Conn |> Process.whereis() |> Xandra.prepare(query)
-    {:cache, prepared}
+    with {:ok, prepared} <-
+           Xandra.prepare(EctoCassandra.Conn, EctoCassandra.Query.new(operation, query)),
+         do: {:cache, prepared}
   end
 
   def execute(repo, query_meta, query_cache, sources, preprocess, opts),
