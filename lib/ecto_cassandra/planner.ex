@@ -5,6 +5,7 @@ defmodule EctoCassandra.Planner do
 
   require Logger
   alias Ecto.UUID
+  alias EctoCassandra.Conn
 
   @behaviour Ecto.Adapter
 
@@ -85,8 +86,7 @@ defmodule EctoCassandra.Planner do
   @spec prepare(atom :: :all | :update_all | :delete_all, query) ::
           {:cache, term} | {:nocache, term} | no_return
   def prepare(operation, query) do
-    with {:ok, prepared} <-
-           Xandra.prepare(EctoCassandra.Conn, EctoCassandra.Query.new(operation, query)),
+    with {:ok, prepared} <- Xandra.prepare(Conn, EctoCassandra.Query.new(operation, query)),
          do: {:cache, prepared}
   end
 
@@ -96,13 +96,10 @@ defmodule EctoCassandra.Planner do
                {:nocache, prepared}
                | {:cached, (prepared -> :ok), cached}
                | {:cache, (cached -> :ok), prepared}
-  def execute(repo, query_meta, query_cache, sources, preprocess, opts) do
-    IO.inspect(repo)
-    IO.inspect(query_meta)
-    IO.inspect(query_cache)
-    IO.inspect(sources)
-    IO.inspect(preprocess)
-    IO.inspect(opts)
+  def execute(_repo, _query_meta, {:cache, _, prepared}, _sources, _preprocess, _opts) do
+    with {:ok, %Xandra.Page{} = page} <- Xandra.execute(Conn, prepared),
+         pages <- Enum.to_list(page),
+         do: {length(pages), pages}
   end
 
   @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
