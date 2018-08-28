@@ -5,7 +5,7 @@ defmodule EctoCassandra.Planner do
 
   require Logger
   alias Ecto.UUID
-  alias EctoCassandra.Conn
+  alias EctoCassandra.{Conn, Types}
 
   @behaviour Ecto.Adapter
 
@@ -102,12 +102,33 @@ defmodule EctoCassandra.Planner do
          do: {length(pages), pages}
   end
 
-  # @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
-  #         {:ok, fields}
-  #         | {:invalid, constraints}
-  #         | no_return
-  # def insert(repo, query_meta, sources, on_conflict, returning, opts),
-  #   do: raise_not_implemented_error()
+  @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
+          {:ok, fields}
+          | {:invalid, constraints}
+          | no_return
+  def insert(
+        _repo,
+        %{schema: schema, source: {_, table}} = source,
+        sources,
+        _on_conflict,
+        _returning,
+        _opts
+      ) do
+    keys = sources |> Keyword.keys() |> Enum.join(", ")
+    values = sources |> Enum.map(fn _ -> "?" end) |> Enum.join(", ")
+    statement = "INSERT INTO #{table} (#{keys}) VALUES (#{values})"
+    prepared_sources = prepare_sources(schema, sources)
+
+    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources),
+         do: {:ok, sources}
+  end
+
+  defp prepare_sources(schema, sources) do
+    for k <- Keyword.keys(sources), into: %{} do
+      ecto_type = schema.__schema__(:type, k)
+      {to_string(k), {ecto_type |> Types.to_db() |> to_string, sources[k]}}
+    end
+  end
 
   # @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
   #         {integer, [[term]] | nil}
@@ -142,7 +163,7 @@ defmodule EctoCassandra.Planner do
 
   def dumpers(_primitive, type), do: [type]
 
-  defp to_naive(%NaiveDateTime{} = dt), do: {:ok, dt}
-  defp to_naive(%DateTime{} = dt), do: {:ok, DateTime.to_naive(dt)}
+  defp to_naive(%NaiveDateTime{} = dt), do: DateTime.from_naive(dt, "Etc/UTC")
+  defp to_naive(%DateTime{} = dt), do: {:ok, dt}
   defp to_naive(_), do: :error
 end
