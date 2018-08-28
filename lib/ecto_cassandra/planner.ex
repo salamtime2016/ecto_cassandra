@@ -4,9 +4,46 @@ defmodule EctoCassandra.Planner do
   """
 
   require Logger
-  alias Ecto.{Query, UUID}
+  alias Ecto.UUID
 
   @behaviour Ecto.Adapter
+
+  @type t :: EctoCassandra.Adapter.Planner
+
+  @type query_meta :: %{
+          prefix: binary | nil,
+          sources: tuple,
+          assocs: term,
+          preloads: term,
+          select: term,
+          fields: [term]
+        }
+
+  @type schema_meta :: %{
+          source: source,
+          schema: atom,
+          context: term,
+          autogenerate_id: {atom, :id | :binary_id}
+        }
+
+  @type query :: Ecto.Query.t()
+  @type source :: {prefix :: binary | nil, table :: binary}
+  @type fields :: Keyword.t()
+  @type filters :: Keyword.t()
+  @type constraints :: Keyword.t()
+  @type returning :: [atom]
+  @type prepared :: term
+  @type cached :: term
+  @type process :: (field :: Macro.t(), value :: term, context :: term -> term)
+  @type autogenerate_id :: {field :: atom, type :: :id | :binary_id, value :: term} | nil
+
+  @type on_conflict ::
+          {:raise, list(), []}
+          | {:nothing, list(), [atom]}
+          | {query, list(), [atom]}
+
+  @typep repo :: Ecto.Repo.t()
+  @typep options :: Keyword.t()
 
   @doc false
   defmacro __before_compile__(_env), do: :ok
@@ -45,7 +82,7 @@ defmodule EctoCassandra.Planner do
     )
   end
 
-  @spec prepare(atom :: :all | :update_all | :delete_all, Query.t()) ::
+  @spec prepare(atom :: :all | :update_all | :delete_all, query) ::
           {:cache, term} | {:nocache, term} | no_return
   def prepare(operation, query) do
     with {:ok, prepared} <-
@@ -53,23 +90,56 @@ defmodule EctoCassandra.Planner do
          do: {:cache, prepared}
   end
 
-  def execute(repo, query_meta, query_cache, sources, preprocess, opts),
-    do: raise_not_implemented_error()
+  @spec execute(repo, query_meta, query, params :: list, process | nil, options) :: result
+        when result: {integer, [[term]] | nil} | no_return,
+             query:
+               {:nocache, prepared}
+               | {:cached, (prepared -> :ok), cached}
+               | {:cache, (cached -> :ok), prepared}
+  def execute(repo, query_meta, query_cache, sources, preprocess, opts) do
+    IO.inspect(repo)
+    IO.inspect(query_meta)
+    IO.inspect(query_cache)
+    IO.inspect(sources)
+    IO.inspect(preprocess)
+    IO.inspect(opts)
+  end
 
+  @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
+          {:ok, fields}
+          | {:invalid, constraints}
+          | no_return
   def insert(repo, query_meta, sources, on_conflict, returning, opts),
     do: raise_not_implemented_error()
 
+  @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
+          {integer, [[term]] | nil}
+          | no_return
   def insert_all(repo, query_meta, header, rows, on_conflict, returning, opts),
     do: raise_not_implemented_error()
 
+  @spec update(repo, schema_meta, fields, filters, returning, options) ::
+          {:ok, fields}
+          | {:invalid, constraints}
+          | {:error, :stale}
+          | no_return
   def update(repo, query_meta, params, filter, autogen, opts), do: raise_not_implemented_error()
 
+  @spec delete(repo, schema_meta, filters, options) ::
+          {:ok, fields}
+          | {:invalid, constraints}
+          | {:error, :stale}
+          | no_return
   def delete(repo, query_meta, filter, opts), do: raise_not_implemented_error()
 
-  def transaction(repo, opts, fun), do: raise_not_implemented_error()
-
+  @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
+          (term -> {:ok, term} | :error) | Ecto.Type.t()
+        ]
   def loaders(primitive, type), do: raise_not_implemented_error()
 
+  @spec dumpers(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
+          (term -> {:ok, term} | :error) | Ecto.Type.t()
+        ]
   def dumpers(primitive, type), do: raise_not_implemented_error()
 
   defp raise_not_implemented_error, do: raise(ArgumentError, "Not implemented")
