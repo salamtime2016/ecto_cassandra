@@ -12,17 +12,22 @@ defmodule EctoCassandra.Migration do
           Ecto.Adapters.Migration.command(),
           options :: Keyword.t()
         ) :: :ok | no_return
-  def execute_ddl(repo, {:create_if_not_exists, %Table{name: table_name}, commands}, _opts) do
-    cql = to_cql([{:create_table, table_name}] ++ commands)
+  def execute_ddl(repo, {command, %Table{name: table_name}, commands}, _opts)
+      when command in ~w(create_if_not_exists create)a do
+    cql = to_cql([{command, table_name}] ++ commands)
 
     with {:ok, %SchemaChange{effect: "CREATED"}} <- Xandra.execute(Conn, cql), do: :ok
   end
 
-  def execute_ddl(_repo, _command, _opts) do
+  def execute_ddl(_repo, command, _opts) do
     raise ArgumentError, "Not acceptable arguments"
   end
 
-  defp to_cql([{:create_table, table_name} | commands]) do
+  defp to_cql([{:create_if_not_exists, table_name} | commands]) do
+    "CREATE TABLE IF NOT EXISTS #{table_name} (#{to_cql(commands)});"
+  end
+
+  defp to_cql([{:create, table_name} | commands]) do
     "CREATE TABLE #{table_name} (#{to_cql(commands)});"
   end
 

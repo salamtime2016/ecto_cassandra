@@ -102,42 +102,47 @@ defmodule EctoCassandra.Planner do
          do: {length(pages), pages}
   end
 
-  @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
-          {:ok, fields}
-          | {:invalid, constraints}
-          | no_return
-  def insert(repo, query_meta, sources, on_conflict, returning, opts),
-    do: raise_not_implemented_error()
+  # @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
+  #         {:ok, fields}
+  #         | {:invalid, constraints}
+  #         | no_return
+  # def insert(repo, query_meta, sources, on_conflict, returning, opts),
+  #   do: raise_not_implemented_error()
 
-  @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
-          {integer, [[term]] | nil}
-          | no_return
-  def insert_all(repo, query_meta, header, rows, on_conflict, returning, opts),
-    do: raise_not_implemented_error()
+  # @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
+  #         {integer, [[term]] | nil}
+  #         | no_return
+  # def insert_all(repo, query_meta, header, rows, on_conflict, returning, opts),
+  #   do: raise_not_implemented_error()
 
-  @spec update(repo, schema_meta, fields, filters, returning, options) ::
-          {:ok, fields}
-          | {:invalid, constraints}
-          | {:error, :stale}
-          | no_return
-  def update(repo, query_meta, params, filter, autogen, opts), do: raise_not_implemented_error()
+  # @spec update(repo, schema_meta, fields, filters, returning, options) ::
+  #         {:ok, fields}
+  #         | {:invalid, constraints}
+  #         | {:error, :stale}
+  #         | no_return
+  # def update(repo, query_meta, params, filter, autogen, opts), do: raise_not_implemented_error()
 
-  @spec delete(repo, schema_meta, filters, options) ::
-          {:ok, fields}
-          | {:invalid, constraints}
-          | {:error, :stale}
-          | no_return
-  def delete(repo, query_meta, filter, opts), do: raise_not_implemented_error()
+  # @spec delete(repo, schema_meta, filters, options) ::
+  #         {:ok, fields}
+  #         | {:invalid, constraints}
+  #         | {:error, :stale}
+  #         | no_return
+  # def delete(repo, query_meta, filter, opts), do: raise_not_implemented_error()
 
-  @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
-          (term -> {:ok, term} | :error) | Ecto.Type.t()
-        ]
-  def loaders(primitive, type), do: raise_not_implemented_error()
+  # @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
+  #         (term -> {:ok, term} | :error) | Ecto.Type.t()
+  #       ]
+  # def loaders(primitive, type), do: raise_not_implemented_error()
 
   @spec dumpers(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]
-  def dumpers(primitive, type), do: raise_not_implemented_error()
+  def dumpers(datetime, type) when datetime in [:datetime, :utc_datetime, :naive_datetime],
+    do: [&to_naive/1]
 
-  defp raise_not_implemented_error, do: raise(ArgumentError, "Not implemented")
+  def dumpers(_primitive, type), do: [type]
+
+  defp to_naive(%NaiveDateTime{} = dt), do: {:ok, dt}
+  defp to_naive(%DateTime{} = dt), do: {:ok, DateTime.to_naive(dt)}
+  defp to_naive(_), do: :error
 end
