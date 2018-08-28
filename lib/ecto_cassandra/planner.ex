@@ -4,7 +4,7 @@ defmodule EctoCassandra.Planner do
   """
 
   require Logger
-  alias Ecto.Query
+  alias Ecto.{Query, UUID}
 
   @behaviour Ecto.Adapter
 
@@ -14,7 +14,8 @@ defmodule EctoCassandra.Planner do
   @spec ensure_all_started(any, type :: :application.restart_type()) ::
           {:ok, [atom]} | {:error, atom}
   def ensure_all_started(_repo, _type) do
-    {:ok, []}
+    Application.ensure_all_started(:db_connection)
+    {:ok, [:db_connection]}
   end
 
   @spec child_spec(any, keyword) :: Supervisor.Spec.spec()
@@ -34,8 +35,8 @@ defmodule EctoCassandra.Planner do
   Automatically generate next ID for binary keys, leave sequence keys empty for generation on insert.
   """
   @spec autogenerate(atom) :: String.t() | no_return
-  def autogenerate(:embed_id), do: Ecto.UUID.generate()
-  def autogenerate(:binary_id), do: Ecto.UUID.autogenerate()
+  def autogenerate(:embed_id), do: UUID.generate()
+  def autogenerate(:binary_id), do: UUID.autogenerate()
 
   def autogenerate(:id) do
     raise(
