@@ -7,7 +7,7 @@ defmodule EctoCassandra.Planner do
 
   require Logger
   alias Ecto.UUID
-  alias EctoCassandra.{Conn, Types}
+  alias EctoCassandra.{Conn, Query, Types}
 
   @behaviour Ecto.Adapter
 
@@ -152,8 +152,8 @@ defmodule EctoCassandra.Planner do
           | {:invalid, constraints}
           | {:error, :stale}
           | no_return
-  def delete(_repo, query_meta, _filters, _opts) do
-    with {:ok, _} <- Xandra.execute(Conn, Query.new(:delete, query_meta)) do
+  def delete(_repo, %{source: {nil, table_name}}, filters, _opts) do
+    with %Xandra.Void{} <- Xandra.execute!(Conn, Query.new(:delete, {table_name, filters})) do
       {:ok, []}
     else
       err -> {:invalid, err}
