@@ -26,6 +26,11 @@ defmodule EctoCassandra.Query do
     "DROP TABLE #{table_name};"
   end
 
+  def new(create_index: {table, columns, index_name}) do
+    indexed_columns = Enum.map_join(columns, ",", &to_string/1)
+    "CREATE INDEX #{index_name} ON #{table} (#{indexed_columns})"
+  end
+
   def new(_arg) do
     ""
   end
