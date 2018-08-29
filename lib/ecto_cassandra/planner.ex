@@ -86,7 +86,7 @@ defmodule EctoCassandra.Planner do
   @spec prepare(atom :: :all | :update_all | :delete_all, query) ::
           {:cache, term} | {:nocache, term} | no_return
   def prepare(operation, query) do
-    with {:ok, prepared} <- Xandra.prepare(Conn, EctoCassandra.Query.new(operation, query)),
+    with prepared <- Xandra.prepare!(Conn, EctoCassandra.Query.new(operation, query)),
          do: {:cache, prepared}
   end
 
@@ -96,10 +96,18 @@ defmodule EctoCassandra.Planner do
                {:nocache, prepared}
                | {:cached, (prepared -> :ok), cached}
                | {:cache, (cached -> :ok), prepared}
-  def execute(_repo, _query_meta, {:cache, _, prepared}, _sources, _preprocess, _opts) do
-    with {:ok, %Xandra.Page{} = page} <- Xandra.execute(Conn, prepared),
-         pages <- Enum.to_list(page),
-         do: {length(pages), pages}
+  def execute(
+        repo,
+        %{sources: {{_table_name, schema}}} = s,
+        {:cache, _, prepared} = q,
+        sources,
+        preprocess,
+        opts
+      ) do
+    with %Xandra.Page{} = page <- Xandra.execute!(Conn, prepared, sources) do
+      pages = Enum.to_list(page)
+      {length(pages), Enum.map(pages, &process_row(&1, preprocess, schema.__schema__(:fields)))}
+    end
   end
 
   @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
@@ -108,7 +116,7 @@ defmodule EctoCassandra.Planner do
           | no_return
   def insert(
         _repo,
-        %{schema: schema, source: {_, table}} = source,
+        %{schema: schema, source: {_, table}},
         sources,
         _on_conflict,
         _returning,
@@ -120,14 +128,7 @@ defmodule EctoCassandra.Planner do
     prepared_sources = prepare_sources(schema, sources)
 
     with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources),
-         do: {:ok, sources}
-  end
-
-  defp prepare_sources(schema, sources) do
-    for k <- Keyword.keys(sources), into: %{} do
-      ecto_type = schema.__schema__(:type, k)
-      {to_string(k), {ecto_type |> Types.to_db() |> to_string, sources[k]}}
-    end
+         do: {:ok, []}
   end
 
   # @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
@@ -150,20 +151,33 @@ defmodule EctoCassandra.Planner do
   #         | no_return
   # def delete(repo, query_meta, filter, opts), do: raise_not_implemented_error()
 
-  # @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
-  #         (term -> {:ok, term} | :error) | Ecto.Type.t()
-  #       ]
-  # def loaders(primitive, type), do: raise_not_implemented_error()
+  @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
+          (term -> {:ok, term} | :error) | Ecto.Type.t()
+        ]
+  def loaders(:binary_id, type), do: [fn v -> {:ok, v} end, type]
+  def loaders(type, _) when type in ~w(utc_datetime naive_datetime)a, do: [&to_dt/1]
+  def loaders(_primitive, type), do: [type]
 
   @spec dumpers(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]
   def dumpers(datetime, type) when datetime in [:datetime, :utc_datetime, :naive_datetime],
-    do: [&to_naive/1]
+    do: [&to_dt/1]
 
   def dumpers(_primitive, type), do: [type]
 
-  defp to_naive(%NaiveDateTime{} = dt), do: DateTime.from_naive(dt, "Etc/UTC")
-  defp to_naive(%DateTime{} = dt), do: {:ok, dt}
-  defp to_naive(_), do: :error
+  defp process_row(row, preprocess, fields) do
+    for f <- fields, do: Map.get(row, to_string(f))
+  end
+
+  defp prepare_sources(schema, sources) do
+    for k <- Keyword.keys(sources), into: %{} do
+      ecto_type = schema.__schema__(:type, k)
+      {to_string(k), {ecto_type |> Types.to_db() |> to_string, sources[k]}}
+    end
+  end
+
+  defp to_dt(%NaiveDateTime{} = dt), do: DateTime.from_naive(dt, "Etc/UTC")
+  defp to_dt(%DateTime{} = dt), do: {:ok, dt}
+  defp to_dt(_), do: :error
 end
