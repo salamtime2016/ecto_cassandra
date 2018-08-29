@@ -10,7 +10,7 @@ defmodule EctoCassandra.Query do
   @spec new(any) :: String.t() | no_return
   @spec new(atom, Q.t()) :: String.t() | no_return
   def new([{:create_if_not_exists, table_name} | commands]) do
-    "CREATE TABLE IF NOT EXISTS #{table_name} (#{new(commands)});"
+    "CREATE TABLE IF NOT EXISTS #{table_name} (#{new(commands)})"
   end
 
   def new([{:create, table_name} | commands]) do
@@ -28,7 +28,7 @@ defmodule EctoCassandra.Query do
 
   def new(create_index: {table, columns, index_name}) do
     indexed_columns = Enum.map_join(columns, ",", &to_string/1)
-    "CREATE INDEX #{index_name} ON #{table} (#{indexed_columns})"
+    "CREATE INDEX #{index_name} ON #{table} (#{indexed_columns});"
   end
 
   def new(_arg) do
@@ -36,11 +36,11 @@ defmodule EctoCassandra.Query do
   end
 
   def new(:all, %Q{from: {table, _}, wheres: []}) do
-    "SELECT * FROM #{table}"
+    "SELECT * FROM #{table};"
   end
 
   def new(:all, %Q{from: {table, _}, wheres: wheres}) do
-    "SELECT * FROM #{table} WHERE #{where(wheres)}"
+    "SELECT * FROM #{table} WHERE #{where(wheres)} ALLOW FILTERING;"
   end
 
   def new(:delete_all, %Q{from: {table, _}, wheres: wheres}) do
