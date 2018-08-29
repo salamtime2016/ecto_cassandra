@@ -31,6 +31,10 @@ defmodule EctoCassandra.Query do
     "CREATE INDEX #{index_name} ON #{table} (#{indexed_columns});"
   end
 
+  def new(drop_index: index_name) do
+    "DROP INDEX #{index_name}"
+  end
+
   def new(_arg) do
     ""
   end
