@@ -3,7 +3,7 @@ defmodule EctoCassandra.Migration do
   Implement Ecto migrations
   """
 
-  alias Ecto.Migration.Table
+  alias Ecto.Migration.{Index, Table}
   alias EctoCassandra.{Conn, Query}
   alias Xandra.SchemaChange
 
@@ -18,12 +18,18 @@ defmodule EctoCassandra.Migration do
     with %SchemaChange{effect: "CREATED"} <- Xandra.execute!(Conn, cql), do: :ok
   end
 
+  def execute_ddl(_repo, {command, %Index{columns: columns, name: name, table: table}}, _opts)
+      when command in ~w(create_if_not_exists create)a do
+    cql = Query.new(create_index: {table, columns, name})
+    with %SchemaChange{effect: "CREATED"} <- Xandra.execute!(Conn, cql), do: :ok
+  end
+
   def execute_ddl(_repo, {:drop, %Table{name: table_name}}, _opts) do
     cql = Query.new(drop: table_name)
     with %SchemaChange{effect: "DROPPED"} <- Xandra.execute!(Conn, cql), do: :ok
   end
 
-  def execute_ddl(_repo, _command, _opts) do
+  def execute_ddl(_repo, command, _opts) do
     raise ArgumentError, "Not acceptable arguments"
   end
 end
