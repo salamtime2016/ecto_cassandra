@@ -42,10 +42,12 @@ defmodule EctoCassandra.Adapter do
   defdelegate transaction(repo, opts, fun), to: @adapter
 
   @doc false
-  def in_transaction?(repo), do: false
+  @spec in_transaction?(any) :: false
+  def in_transaction?(_repo), do: false
 
   @doc false
-  def rollback(repo, tid), do: nil
+  @spec rollback(any, any) :: nil
+  def rollback(_repo, _tid), do: nil
 
   @doc false
   defdelegate autogenerate(type), to: @adapter
