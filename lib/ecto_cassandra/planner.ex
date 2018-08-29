@@ -145,12 +145,18 @@ defmodule EctoCassandra.Planner do
   #         | no_return
   # def update(repo, query_meta, params, filter, autogen, opts), do: raise_not_implemented_error()
 
-  # @spec delete(repo, schema_meta, filters, options) ::
-  #         {:ok, fields}
-  #         | {:invalid, constraints}
-  #         | {:error, :stale}
-  #         | no_return
-  # def delete(repo, query_meta, filter, opts), do: raise_not_implemented_error()
+  @spec delete(repo, schema_meta, filters, options) ::
+          {:ok, fields}
+          | {:invalid, constraints}
+          | {:error, :stale}
+          | no_return
+  def delete(_repo, query_meta, _filters, _opts) do
+    with {:ok, _} <- Xandra.execute(Conn, Query.new(:delete, query_meta)) do
+      {:ok, []}
+    else
+      err -> {:invalid, err}
+    end
+  end
 
   @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
