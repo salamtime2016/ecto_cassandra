@@ -51,12 +51,20 @@ defmodule EctoCassandra.Query do
     "DELETE FROM #{table} WHERE #{where(wheres)};"
   end
 
+  def new(:delete, {table, filters}) do
+    "DELETE FROM #{table} WHERE #{where(filters)}"
+  end
+
   def new(_, _) do
     ""
   end
 
   defp where([expr | wheres]) do
     where(expr) <> where(wheres)
+  end
+
+  defp where({key, val}) do
+    "#{key} = #{val}"
   end
 
   defp where(%BooleanExpr{expr: {op, [], [left, _right]}}) do
