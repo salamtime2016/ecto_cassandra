@@ -1,3 +1,5 @@
+require IEx
+
 defmodule EctoCassandra.Planner do
   @moduledoc """
   Ecto Cassandra core planner
@@ -173,8 +175,8 @@ defmodule EctoCassandra.Planner do
 
   def dumpers(_primitive, type), do: [type]
 
-  defp process_row(row, _preprocess, fields) do
-    for f <- fields, do: Map.get(row, to_string(f))
+  defp process_row(row, preprocess, fields) do
+    fields |> Enum.map(fn f -> Map.get(row, to_string(f)) end) |> preprocess.()
   end
 
   defp prepare_sources(schema, sources) do
