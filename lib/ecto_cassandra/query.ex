@@ -4,7 +4,7 @@ defmodule EctoCassandra.Query do
   """
 
   alias Ecto.Query, as: Q
-  alias Ecto.Query.{BooleanExpr, QueryExpr}
+  alias Ecto.Query.{BooleanExpr}
   alias EctoCassandra.Types
 
   @spec new(any) :: String.t() | no_return
@@ -26,15 +26,15 @@ defmodule EctoCassandra.Query do
     "DROP TABLE #{table_name};"
   end
 
-  def new(arg) do
+  def new(_arg) do
     ""
   end
 
-  def new(:all, %Q{from: {table, _}, select: select}) do
+  def new(:all, %Q{from: {table, _}, select: _select}) do
     "SELECT * FROM #{table};"
   end
 
-  def new(:delete_all, %Q{from: {table, _}, wheres: wheres} = q) do
+  def new(:delete_all, %Q{from: {table, _}, wheres: wheres}) do
     "DELETE FROM #{table} WHERE #{where(wheres)};"
   end
 
@@ -47,7 +47,7 @@ defmodule EctoCassandra.Query do
   end
 
   defp where(%BooleanExpr{expr: {op, [], [left, _right]}}) do
-    {{arg, [], [{:&, [], [0]}, field]}, [], []} = left
+    {{_arg, [], [{:&, [], [0]}, field]}, [], []} = left
     "#{field} #{op_to_cql(op)} ?"
   end
 

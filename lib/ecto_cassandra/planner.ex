@@ -97,12 +97,12 @@ defmodule EctoCassandra.Planner do
                | {:cached, (prepared -> :ok), cached}
                | {:cache, (cached -> :ok), prepared}
   def execute(
-        repo,
-        %{sources: {{_table_name, schema}}} = s,
-        {:cache, _, prepared} = q,
+        _repo,
+        %{sources: {{_table_name, schema}}},
+        {:cache, _, prepared},
         sources,
         preprocess,
-        opts
+        _opts
       ) do
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, prepared, sources) do
       pages = Enum.to_list(page)
@@ -131,7 +131,8 @@ defmodule EctoCassandra.Planner do
          do: {:ok, []}
   end
 
-  # @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
+  # @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning,
+  # options) ::
   #         {integer, [[term]] | nil}
   #         | no_return
   # def insert_all(repo, query_meta, header, rows, on_conflict, returning, opts),
@@ -161,12 +162,12 @@ defmodule EctoCassandra.Planner do
   @spec dumpers(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]
-  def dumpers(datetime, type) when datetime in [:datetime, :utc_datetime, :naive_datetime],
+  def dumpers(datetime, _type) when datetime in [:datetime, :utc_datetime, :naive_datetime],
     do: [&to_dt/1]
 
   def dumpers(_primitive, type), do: [type]
 
-  defp process_row(row, preprocess, fields) do
+  defp process_row(row, _preprocess, fields) do
     for f <- fields, do: Map.get(row, to_string(f))
   end
 
