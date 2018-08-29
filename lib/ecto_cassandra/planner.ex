@@ -66,7 +66,7 @@ defmodule EctoCassandra.Planner do
         after_connect: &Xandra.execute(&1, "USE #{keyspace}")
       )
 
-    Supervisor.Spec.supervisor(Xandra, [opts], restart: :permanent, id: EctoCassandra.Conn)
+    Supervisor.Spec.worker(Xandra, [opts], restart: :permanent)
   end
 
   @doc """
