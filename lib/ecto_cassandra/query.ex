@@ -30,8 +30,12 @@ defmodule EctoCassandra.Query do
     ""
   end
 
-  def new(:all, %Q{from: {table, _}, select: _select}) do
-    "SELECT * FROM #{table};"
+  def new(:all, %Q{from: {table, _}, wheres: []}) do
+    "SELECT * FROM #{table}"
+  end
+
+  def new(:all, %Q{from: {table, _}, wheres: wheres}) do
+    "SELECT * FROM #{table} WHERE #{where(wheres)}"
   end
 
   def new(:delete_all, %Q{from: {table, _}, wheres: wheres}) do
