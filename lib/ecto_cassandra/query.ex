@@ -55,6 +55,11 @@ defmodule EctoCassandra.Query do
     "DELETE FROM #{table} WHERE #{where(filters)}"
   end
 
+  def new(:update, {table, params, filter}) do
+    set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
+    "UPDATE #{table} SET #{set} WHERE #{where(filter)}"
+  end
+
   def new(_, _) do
     ""
   end

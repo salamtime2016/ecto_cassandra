@@ -1,5 +1,3 @@
-require IEx
-
 defmodule EctoCassandra.Planner do
   @moduledoc """
   Ecto Cassandra core planner
@@ -140,12 +138,20 @@ defmodule EctoCassandra.Planner do
   # def insert_all(repo, query_meta, header, rows, on_conflict, returning, opts),
   #   do: raise_not_implemented_error()
 
-  # @spec update(repo, schema_meta, fields, filters, returning, options) ::
-  #         {:ok, fields}
-  #         | {:invalid, constraints}
-  #         | {:error, :stale}
-  #         | no_return
-  # def update(repo, query_meta, params, filter, autogen, opts), do: raise_not_implemented_error()
+  @spec update(repo, schema_meta, fields, filters, returning, options) ::
+          {:ok, fields}
+          | {:invalid, constraints}
+          | {:error, :stale}
+          | no_return
+  def update(_repo, %{source: {nil, table_name}, schema: schema}, params, filter, _autogen, _opts) do
+    statement = Query.new(:update, {table_name, params, filter})
+
+    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepare_sources(schema, params)) do
+      {:ok, []}
+    else
+      {:error, any} -> {:invalid, any}
+    end
+  end
 
   @spec delete(repo, schema_meta, filters, options) ::
           {:ok, fields}
