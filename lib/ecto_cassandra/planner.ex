@@ -169,13 +169,15 @@ defmodule EctoCassandra.Planner do
   @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]
-  def loaders(:binary_id, type), do: [fn v -> {:ok, v} end, type]
+  def loaders(:binary_id, type), do: [fn t -> {:ok, t} end, type]
   def loaders(type, _) when type in ~w(utc_datetime naive_datetime)a, do: [&to_dt/1]
   def loaders(_primitive, type), do: [type]
 
   @spec dumpers(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]
+  def dumpers(:binary_id, type), do: [type]
+
   def dumpers(datetime, _type) when datetime in [:datetime, :utc_datetime, :naive_datetime],
     do: [&to_dt/1]
 
