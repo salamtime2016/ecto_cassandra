@@ -39,7 +39,8 @@ defmodule EctoCassandra.Adapter do
   defdelegate delete(repo, query_meta, filter, opts), to: @adapter
 
   @doc false
-  defdelegate transaction(repo, opts, fun), to: @adapter
+  @spec transaction(any, any, any) :: nil
+  def transaction(_repo, _opts, _fun), do: nil
 
   @doc false
   @spec in_transaction?(any) :: false
