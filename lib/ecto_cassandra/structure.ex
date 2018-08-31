@@ -4,6 +4,7 @@ defmodule EctoCassandra.Structure do
   """
 
   @dump_file "structure.cql"
+  @default_cql_version "3.4.4"
 
   @spec structure_dump(default :: String.t(), config :: Keyword.t()) ::
           {:ok, String.t()}
@@ -12,7 +13,8 @@ defmodule EctoCassandra.Structure do
     keyspace = Keyword.get(config, :keyspace)
     path = Path.join(default, @dump_file)
 
-    with {schema, 0} <- System.cmd("cqlsh", auth_opts(config) ++ ["-e", "DESCRIBE #{keyspace}"]),
+    with {schema, 0} <-
+           System.cmd("cqlsh", default_opts(config) ++ ["-e", "DESCRIBE #{keyspace}"]),
          :ok <- File.write(path, schema) do
       {:ok, path}
     else
@@ -27,17 +29,22 @@ defmodule EctoCassandra.Structure do
   def structure_load(default, config) do
     path = Path.join(default, @dump_file)
 
-    with {_res, 0} <- System.cmd("cqlsh", ["-f", path] ++ auth_opts(config)) do
+    with {_res, 0} <- System.cmd("cqlsh", ["-f", path] ++ default_opts(config)) do
       {:ok, path}
     else
       {err, _} -> {:error, err}
     end
   end
 
-  defp auth_opts(config) do
-    case Keyword.get(config, :authentication) do
-      {_, [username: username, password: password]} -> ~w(-u #{username} -p #{password})
-      _ -> []
-    end
+  defp default_opts(config) do
+    cql_version = Keyword.get(config, :cql_version, @default_cql_version)
+
+    opts =
+      case Keyword.get(config, :authentication) do
+        {_, [username: username, password: password]} -> ~w(-u #{username} -p #{password})
+        _ -> []
+      end
+
+    opts ++ ~w(--cqlversion=#{cql_version})
   end
 end
