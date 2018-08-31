@@ -7,6 +7,7 @@ defmodule EctoCassandra.Adapter do
   @adapter EctoCassandra.Planner
   @storage_adapter EctoCassandra.Storage
   @migration_adapter EctoCassandra.Migration
+  @structure_adapter EctoCassandra.Structure
 
   @doc false
   defmacro __before_compile__(_env), do: :ok
@@ -74,4 +75,12 @@ defmodule EctoCassandra.Adapter do
 
   @doc false
   def supports_ddl_transaction?, do: false
+
+  @behaviour Ecto.Adapter.Structure
+
+  @doc false
+  defdelegate structure_dump(default, config), to: @structure_adapter
+
+  @doc false
+  defdelegate structure_load(default, config), to: @structure_adapter
 end
