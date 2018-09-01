@@ -131,12 +131,19 @@ defmodule EctoCassandra.Planner do
          do: {:ok, []}
   end
 
-  # @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning,
-  # options) ::
-  #         {integer, [[term]] | nil}
-  #         | no_return
-  # def insert_all(repo, query_meta, header, rows, on_conflict, returning, opts),
-  #   do: raise_not_implemented_error()
+  @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
+          {integer, [[term]] | nil}
+          | no_return
+  def insert_all(_repo, %{source: {_, table}}, header, rows, _on_conflict, returning, _opts) do
+    IO.inspect(returning)
+    IO.inspect(header)
+    statement = "INSERT INTO #{table}"
+
+    with %Xandra.Page{} = page <- Xandra.execute!(Conn, statement, rows) do
+      pages = Enum.to_list(page)
+      {length(pages), pages}
+    end
+  end
 
   @spec update(repo, schema_meta, fields, filters, returning, options) ::
           {:ok, fields}
