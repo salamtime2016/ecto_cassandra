@@ -24,7 +24,7 @@ defmodule EctoCassandra.Migration do
     with %SchemaChange{effect: "CREATED"} <- Xandra.execute!(Conn, cql), do: :ok
   end
 
-  def execute_ddl(_repo, {:drop, %Index{name: name, table: table}}, _opts) do
+  def execute_ddl(_repo, {:drop, %Index{name: name}}, _opts) do
     cql = Query.new(drop_index: name)
     with %SchemaChange{effect: "DROPPED"} <- Xandra.execute!(Conn, cql), do: :ok
   end
