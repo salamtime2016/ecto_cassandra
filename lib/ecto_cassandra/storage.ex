@@ -4,14 +4,12 @@ defmodule EctoCassandra.Storage do
   """
 
   @behaviour Ecto.Adapter.Storage
-
-  @replication "{ 'class' : 'SimpleStrategy', 'replication_factor' : 3 }"
+  @default_replication_opts [class: "SimpleStrategy", replication_factor: 3]
 
   @spec storage_up(keyword) :: :ok | {:error, any}
   def storage_up(options) when is_list(options) do
     keyspace = Keyword.fetch!(options, :keyspace)
-    # TODO: implement replication opts
-    command = "CREATE KEYSPACE #{keyspace} WITH REPLICATION = #{@replication};"
+    command = "CREATE KEYSPACE #{keyspace} WITH REPLICATION = #{configure_replication(options)};"
 
     with {:ok, conn} <- Xandra.start_link(options),
          %{effect: "CREATED"} <- Xandra.execute!(conn, command) do
@@ -31,5 +29,12 @@ defmodule EctoCassandra.Storage do
     else
       err -> {:error, err}
     end
+  end
+
+  defp configure_replication(options) do
+    [class: class, replication_factor: replication_factor] =
+      Keyword.merge(@default_replication_opts, Keyword.get(options, :replication))
+
+    "{ 'class' : '#{class}', 'replication_factor' : #{replication_factor} }"
   end
 end

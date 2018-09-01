@@ -46,8 +46,7 @@ defmodule EctoCassandra.MixProject do
     [
       flags: ~w(unmatched_returns error_handling race_conditions underspecs unknown)a,
       ignore_warnings: "config/dialyzer.ignore-warnings",
-      plt_add_apps: ~w(mix ex_unit)a,
-      plt_add_deps: :transitive
+      plt_add_apps: ~w(mix ex_unit)a
     ]
   end
 end
