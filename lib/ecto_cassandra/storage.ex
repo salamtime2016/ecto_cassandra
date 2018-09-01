@@ -6,28 +6,24 @@ defmodule EctoCassandra.Storage do
   @behaviour Ecto.Adapter.Storage
   @default_replication_opts [class: "SimpleStrategy", replication_factor: 3]
 
-  @spec storage_up(keyword) :: :ok | {:error, any}
+  @spec storage_up(Keyword.t()) :: :ok | {:error, any}
   def storage_up(options) when is_list(options) do
     keyspace = Keyword.fetch!(options, :keyspace)
     command = "CREATE KEYSPACE #{keyspace} WITH REPLICATION = #{configure_replication(options)};"
 
     with {:ok, conn} <- Xandra.start_link(options),
-         %{effect: "CREATED"} <- Xandra.execute!(conn, command) do
+         {:ok, %{effect: "CREATED"}} <- Xandra.execute(conn, command) do
       :ok
-    else
-      err -> {:error, err}
     end
   end
 
-  @spec storage_down(keyword) :: :ok | {:error, any}
+  @spec storage_down(Keyword.t()) :: :ok | {:error, any}
   def storage_down(options) when is_list(options) do
     keyspace = Keyword.fetch!(options, :keyspace)
 
     with {:ok, conn} <- Xandra.start_link(options),
-         %{effect: "DROPPED"} <- Xandra.execute!(conn, "DROP KEYSPACE #{keyspace};") do
+         {:ok, %{effect: "DROPPED"}} <- Xandra.execute(conn, "DROP KEYSPACE #{keyspace};") do
       :ok
-    else
-      err -> {:error, err}
     end
   end
 

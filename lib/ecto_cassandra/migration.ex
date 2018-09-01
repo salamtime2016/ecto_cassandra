@@ -9,7 +9,7 @@ defmodule EctoCassandra.Migration do
 
   @spec execute_ddl(
           repo :: Ecto.Repo.t(),
-          Ecto.Adapters.Migration.command(),
+          Ecto.Adapter.Migration.command(),
           options :: Keyword.t()
         ) :: :ok | no_return
   def execute_ddl(_repo, {command, %Table{name: table_name}, commands}, _opts)
