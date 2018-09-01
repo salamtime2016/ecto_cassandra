@@ -124,19 +124,18 @@ defmodule EctoCassandra.Planner do
       ) do
     keys = sources |> Keyword.keys() |> Enum.join(", ")
     values = sources |> Enum.map(fn _ -> "?" end) |> Enum.join(", ")
-    statement = "INSERT INTO #{table} (#{keys}) VALUES (#{values})"
+    statement = Query.new(insert: {table, keys, values})
     prepared_sources = prepare_sources(schema, sources)
 
     with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources),
          do: {:ok, []}
   end
 
-  @spec insert_all(repo, schema_meta, header :: [atom], [fields], on_conflict, returning, options) ::
+  @spec insert_all(repo, schema_meta, header :: [atom], [fields], any, returning, options) ::
           {integer, [[term]] | nil}
           | no_return
   def insert_all(_repo, %{source: {_, table}}, header, rows, _on_conflict, returning, _opts) do
-    IO.inspect(returning)
-    IO.inspect(header)
+    :ok = Logger.debug(fn -> {returning, header} end)
     statement = "INSERT INTO #{table}"
 
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, statement, rows) do
@@ -150,10 +149,11 @@ defmodule EctoCassandra.Planner do
           | {:invalid, constraints}
           | {:error, :stale}
           | no_return
-  def update(_repo, %{source: {nil, table_name}, schema: schema}, params, filter, _autogen, _opts) do
+  def update(_repo, %{source: {nil, table_name}, schema: schema}, params, filter, _gen, _opts) do
     statement = Query.new(:update, {table_name, params, filter})
+    sources = prepare_sources(schema, params)
 
-    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepare_sources(schema, params)) do
+    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
       {:ok, []}
     else
       {:error, any} -> {:invalid, any}
@@ -176,10 +176,9 @@ defmodule EctoCassandra.Planner do
   @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]
-  # def loaders(:binary_id, type), do: [fn t -> {:ok, t} end, type]
   def loaders(:binary_id, type) do
     [
-      &case Ecto.UUID.cast(&1) do
+      &case UUID.cast(&1) do
         {:ok, uuid} -> {:ok, uuid}
         _ -> {:ok, &1}
       end,

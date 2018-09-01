@@ -35,6 +35,10 @@ defmodule EctoCassandra.Query do
     "DROP INDEX #{index_name}"
   end
 
+  def new(insert: {table, keys, values}) do
+    "INSERT INTO #{table} (#{keys}) VALUES (#{values})"
+  end
+
   def new(_arg) do
     ""
   end
@@ -47,17 +51,17 @@ defmodule EctoCassandra.Query do
     "SELECT * FROM #{table} WHERE #{where(wheres)} ALLOW FILTERING;"
   end
 
+  def new(:update, {table, params, filter}) do
+    set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
+    "UPDATE #{table} SET #{set} WHERE #{where(filter)}"
+  end
+
   def new(:delete_all, %Q{from: {table, _}, wheres: wheres}) do
     "DELETE FROM #{table} WHERE #{where(wheres)};"
   end
 
   def new(:delete, {table, filters}) do
     "DELETE FROM #{table} WHERE #{where(filters)}"
-  end
-
-  def new(:update, {table, params, filter}) do
-    set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
-    "UPDATE #{table} SET #{set} WHERE #{where(filter)}"
   end
 
   def new(_, _) do
