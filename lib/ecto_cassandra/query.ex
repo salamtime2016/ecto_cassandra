@@ -8,7 +8,7 @@ defmodule EctoCassandra.Query do
   alias EctoCassandra.Types
 
   @spec new(any) :: String.t() | no_return
-  @spec new(atom, Q.t()) :: String.t() | no_return
+  @spec new(atom, Q.t() | tuple) :: String.t() | no_return
   def new([{:create_if_not_exists, table_name} | commands]) do
     "CREATE TABLE IF NOT EXISTS #{table_name} (#{new(commands)})"
   end
