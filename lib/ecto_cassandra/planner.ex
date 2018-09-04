@@ -75,7 +75,7 @@ defmodule EctoCassandra.Planner do
   @doc """
   Automatically generate next ID for binary keys, leave sequence keys empty for generation on insert.
   """
-  @spec autogenerate(atom) :: bitstring | no_return
+  @spec autogenerate(:binary_id | :embed_id) :: <<_::288>>
   def autogenerate(:embed_id) do
     UUID.generate()
   end

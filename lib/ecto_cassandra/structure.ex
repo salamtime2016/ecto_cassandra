@@ -28,13 +28,15 @@ defmodule EctoCassandra.Structure do
           | {:error, term}
   def structure_load(default, config) do
     path = Path.join(default, @dump_file)
-    System.cmd("cqlsh", ["-f", path] ++ default_opts(config))
-    {:ok, path}
-    # with {_res, 0} <- System.cmd("cqlsh", ["-f", path] ++ default_opts(config)) do
-    #   {:ok, path}
-    # else
-    #   {err, _} -> {:error, err}
-    # end
+
+    case File.exists?(path) do
+      true ->
+        {_res, _exit_code} = System.cmd("cqlsh", ["-f", path] ++ default_opts(config))
+        {:ok, path}
+
+      _ ->
+        {:error, :file_not_exists}
+    end
   end
 
   defp default_opts(config) do
