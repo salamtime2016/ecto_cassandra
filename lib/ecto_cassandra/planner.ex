@@ -11,13 +11,11 @@ defmodule EctoCassandra.Planner do
 
   @type t :: EctoCassandra.Adapter.Planner
 
-  @type query_meta :: %{
-          prefix: binary | nil,
-          sources: tuple,
-          assocs: term,
-          preloads: term,
-          select: term,
-          fields: [term]
+  @type query_meta() :: %{
+          prefix: binary() | nil,
+          sources: tuple(),
+          preloads: term(),
+          select: map()
         }
 
   @type schema_meta :: %{
