@@ -94,7 +94,7 @@ defmodule EctoCassandra.Planner do
   @spec prepare(atom :: :all | :update_all | :delete_all, query) ::
           {:cache, Xandra.Prepared.t()} | no_return
   def prepare(operation, query) do
-    with prepared <- Xandra.prepare!(Conn, EctoCassandra.Query.new(operation, query)),
+    with prepared <- Xandra.prepare!(Conn, EctoCassandra.Query.new([{operation, query}])),
          do: {:cache, prepared}
   end
 
@@ -156,7 +156,7 @@ defmodule EctoCassandra.Planner do
           | {:invalid, constraints}
           | no_return
   def update(_repo, %{source: {nil, table_name}, schema: schema}, params, filter, _gen, _opts) do
-    statement = Query.new(:update, {table_name, params, filter})
+    statement = Query.new(update: {table_name, params, filter})
     sources = prepare_sources(schema, params)
 
     with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
@@ -171,7 +171,7 @@ defmodule EctoCassandra.Planner do
           | {:invalid, constraints}
           | no_return
   def delete(_repo, %{source: {nil, table_name}}, filters, _opts) do
-    with %Xandra.Void{} <- Xandra.execute!(Conn, Query.new(:delete, {table_name, filters})) do
+    with %Xandra.Void{} <- Xandra.execute!(Conn, Query.new(delete: {table_name, filters})) do
       {:ok, []}
     else
       err -> {:invalid, err}
