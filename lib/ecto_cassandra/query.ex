@@ -8,13 +8,12 @@ defmodule EctoCassandra.Query do
   alias EctoCassandra.Types
 
   @spec new(any) :: String.t() | no_return
-  @spec new(atom, Q.t() | tuple) :: String.t() | no_return
   def new([{:create_if_not_exists, table_name} | commands]) do
     "CREATE TABLE IF NOT EXISTS #{table_name} (#{new(commands)})"
   end
 
   def new([{:create, table_name} | commands]) do
-    "CREATE TABLE #{table_name} (#{new(commands)});"
+    "CREATE TABLE #{table_name} (#{new(commands)})"
   end
 
   def new([{:add, column, type, options} | commands]) do
@@ -23,12 +22,12 @@ defmodule EctoCassandra.Query do
   end
 
   def new(drop: table_name) do
-    "DROP TABLE #{table_name};"
+    "DROP TABLE #{table_name}"
   end
 
   def new(create_index: {table, columns, index_name}) do
     indexed_columns = Enum.map_join(columns, ",", &to_string/1)
-    "CREATE INDEX #{index_name} ON #{table} (#{indexed_columns});"
+    "CREATE INDEX #{index_name} ON #{table} (#{indexed_columns})"
   end
 
   def new(drop_index: index_name) do
@@ -39,32 +38,28 @@ defmodule EctoCassandra.Query do
     "INSERT INTO #{table} (#{keys}) VALUES (#{values})"
   end
 
-  def new(_arg) do
-    ""
+  def new(all: %Q{from: {table, _}, wheres: []}) do
+    "SELECT * FROM #{table}"
   end
 
-  def new(:all, %Q{from: {table, _}, wheres: []}) do
-    "SELECT * FROM #{table};"
+  def new(all: %Q{from: {table, _}, wheres: wheres}) do
+    "SELECT * FROM #{table} WHERE #{where(wheres)} ALLOW FILTERING"
   end
 
-  def new(:all, %Q{from: {table, _}, wheres: wheres}) do
-    "SELECT * FROM #{table} WHERE #{where(wheres)} ALLOW FILTERING;"
-  end
-
-  def new(:update, {table, params, filter}) do
+  def new(update: {table, params, filter}) do
     set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
     "UPDATE #{table} SET #{set} WHERE #{where(filter)}"
   end
 
-  def new(:delete_all, %Q{from: {table, _}, wheres: wheres}) do
-    "DELETE FROM #{table} WHERE #{where(wheres)};"
+  def new(delete_all: %Q{from: {table, _}, wheres: wheres}) do
+    "DELETE FROM #{table} WHERE #{where(wheres)}"
   end
 
-  def new(:delete, {table, filters}) do
+  def new(delete: {table, filters}) do
     "DELETE FROM #{table} WHERE #{where(filters)}"
   end
 
-  def new(_, _) do
+  def new(_arg) do
     ""
   end
 
