@@ -140,7 +140,7 @@ defmodule EctoCassandra.Planner do
           {integer, [[term]] | nil}
           | no_return
   def insert_all(_repo, %{source: {_, table}}, header, rows, _on_conflict, returning, _opts) do
-    :ok = Logger.debug(fn -> {returning, header} end)
+    # :ok = Logger.debug(fn -> {returning, header} end)
     statement = "INSERT INTO #{table}"
 
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, statement, rows) do
