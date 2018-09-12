@@ -139,7 +139,7 @@ defmodule EctoCassandra.Planner do
   @spec insert_all(repo, schema_meta, header :: [atom], [fields], any, returning, options) ::
           {integer, [[term]] | nil}
           | no_return
-  def insert_all(_repo, %{source: {_, table}}, header, rows, _on_conflict, returning, _opts) do
+  def insert_all(_repo, %{source: {_, table}}, _header, rows, _on_conflict, _returning, _opts) do
     # :ok = Logger.debug(fn -> {returning, header} end)
     statement = "INSERT INTO #{table}"
 
