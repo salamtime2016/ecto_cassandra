@@ -34,6 +34,16 @@ defmodule EctoCassandra.Migration do
     with %SchemaChange{effect: "DROPPED"} <- Xandra.execute!(Conn, cql), do: :ok
   end
 
+  def execute_ddl(_repo, {:alter, %Table{name: table_name}, commands}, _opts) do
+    cql = Query.new([{:alter, table_name}] ++ commands)
+    with %SchemaChange{effect: "CHANGED"} <- Xandra.execute!(Conn, cql), do: :ok
+  end
+
+  def execute_ddl(_repo, {:rename, %Table{name: table_name}, from, to}, _opts) do
+    cql = Query.new(rename: [table_name, from, to])
+    with %SchemaChange{effect: "CHANGED"} <- Xandra.execute!(Conn, cql), do: :ok
+  end
+
   def execute_ddl(_repo, _command, _opts) do
     raise ArgumentError, "Not acceptable arguments"
   end

@@ -16,9 +16,17 @@ defmodule EctoCassandra.Query do
     "CREATE TABLE #{table_name} (#{new(commands)})"
   end
 
+  def new([{:alter, table_name} | commands]) do
+    "ALTER TABLE #{table_name} #{alter_commands(commands)}" |> IO.inspect()
+  end
+
   def new([{:add, column, type, options} | commands]) do
     primary_key? = if Keyword.get(options, :primary_key), do: "PRIMARY KEY", else: ""
     "#{column} #{Types.to_db(type)} #{primary_key?}, " <> new(commands)
+  end
+
+  def new(rename: [table, from, to]) do
+    "ALTER TABLE #{table} RENAME #{from} TO #{to}"
   end
 
   def new(drop: table_name) do
@@ -60,6 +68,21 @@ defmodule EctoCassandra.Query do
   end
 
   def new(_arg) do
+    ""
+  end
+
+  defp alter_commands([{:add, column, type, options} | commands]) do
+    primary_key? = if Keyword.get(options, :primary_key), do: "PRIMARY KEY", else: ""
+    columns = "#{column} #{Types.to_db(type)} #{primary_key?}"
+
+    "ADD #{columns}" <> alter_commands(commands)
+  end
+
+  defp alter_commands([{:remove, column} | commands]) do
+    "DROP #{column}" <> alter_commands(commands)
+  end
+
+  defp alter_commands([]) do
     ""
   end
 
