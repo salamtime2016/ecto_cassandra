@@ -17,7 +17,7 @@ defmodule EctoCassandra.Query do
   end
 
   def new([{:alter, table_name} | commands]) do
-    "ALTER TABLE #{table_name} #{alter_commands(commands)}" |> IO.inspect()
+    "ALTER TABLE #{table_name} #{alter_commands(commands)}"
   end
 
   def new([{:add, column, type, options} | commands]) do
