@@ -125,15 +125,26 @@ defmodule EctoCassandra.Planner do
         sources,
         _on_conflict,
         _returning,
-        _opts
+        opts
       ) do
     keys = sources |> Keyword.keys() |> Enum.join(", ")
     values = sources |> Enum.map(fn _ -> "?" end) |> Enum.join(", ")
-    statement = Query.new(insert: {table, keys, values})
+    statement = Query.new(insert: {table, keys, values, opts})
     prepared_sources = prepare_sources(schema, sources)
 
-    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources),
-         do: {:ok, []}
+    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources) do
+      {:ok, []}
+    else
+      {:ok, %Xandra.Page{} = page} -> check_applied(page)
+      err -> err
+    end
+  end
+
+  defp check_applied(page) do
+    case Enum.to_list(page) do
+      [%{"[applied]" => true}] -> {:ok, []}
+      _ -> {:invalid, unique: "was already exists"}
+    end
   end
 
   @spec insert_all(repo, schema_meta, header :: [atom], [fields], any, returning, options) ::
