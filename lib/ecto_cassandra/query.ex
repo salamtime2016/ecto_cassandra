@@ -42,8 +42,14 @@ defmodule EctoCassandra.Query do
     "DROP INDEX #{index_name}"
   end
 
-  def new(insert: {table, keys, values}) do
-    "INSERT INTO #{table} (#{keys}) VALUES (#{values})"
+  def new(insert: {table, keys, values, opts}) do
+    opts =
+      case Keyword.get(opts, :if_not_exists, false) do
+        true -> "IF NOT EXISTS"
+        _ -> ""
+      end
+
+    "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{opts}"
   end
 
   def new(all: %Q{from: {table, _}, wheres: []}) do
