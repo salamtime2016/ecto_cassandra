@@ -114,7 +114,7 @@ defmodule EctoCassandra.Planner do
         preprocess,
         opts
       ) do
-    IO.inspect(opts)
+    Logger.debug(fn -> opts end)
 
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, prepared, sources) do
       pages = Enum.to_list(page)
