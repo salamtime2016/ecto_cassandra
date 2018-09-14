@@ -1,4 +1,4 @@
-defmodule EctoCassandra.StorageTest do
+defmodule EctoCassandra.PlannerTest do
   @moduledoc false
 
   use ExUnit.Case, async: true
