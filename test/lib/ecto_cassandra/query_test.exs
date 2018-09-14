@@ -29,7 +29,7 @@ defmodule EctoCassandra.QueryTest do
   describe "SELECT" do
     test "returns select statement" do
       assert "SELECT * FROM tablo" =
-               Query.new(all: %EctoQuery{from: {"tablo", "tablo"}, wheres: []})
+               Query.all(%EctoQuery{from: {"tablo", "tablo"}, wheres: []}, [])
     end
   end
 end
