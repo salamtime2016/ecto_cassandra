@@ -91,9 +91,14 @@ defmodule EctoCassandra.Planner do
 
   @spec prepare(atom :: :all | :update_all | :delete_all, query) ::
           {:cache, Xandra.Prepared.t()} | no_return
+  def prepare(:all, query) do
+    prepared = Xandra.prepare!(Conn, EctoCassandra.Query.all(query, []))
+    {:cache, prepared}
+  end
+
   def prepare(operation, query) do
-    with prepared <- Xandra.prepare!(Conn, EctoCassandra.Query.new([{operation, query}])),
-         do: {:cache, prepared}
+    prepared = Xandra.prepare!(Conn, EctoCassandra.Query.new([{operation, query}]))
+    {:cache, prepared}
   end
 
   @spec execute(repo, query_meta, query, params :: list, process | nil, options) :: result
@@ -107,8 +112,10 @@ defmodule EctoCassandra.Planner do
         {:cache, _, prepared},
         sources,
         preprocess,
-        _opts
+        opts
       ) do
+    IO.inspect(opts)
+
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, prepared, sources) do
       pages = Enum.to_list(page)
       {length(pages), Enum.map(pages, &process_row(&1, preprocess, schema.__schema__(:fields)))}
@@ -137,13 +144,6 @@ defmodule EctoCassandra.Planner do
     else
       {:ok, %Xandra.Page{} = page} -> check_applied(page)
       err -> err
-    end
-  end
-
-  defp check_applied(page) do
-    case Enum.to_list(page) do
-      [%{"[applied]" => true}] -> {:ok, []}
-      _ -> {:invalid, unique: "was already exists"}
     end
   end
 
@@ -212,6 +212,13 @@ defmodule EctoCassandra.Planner do
     do: [&to_dt/1]
 
   def dumpers(_primitive, type), do: [type]
+
+  defp check_applied(page) do
+    case Enum.to_list(page) do
+      [%{"[applied]" => true}] -> {:ok, []}
+      _ -> {:invalid, unique: "was already exists"}
+    end
+  end
 
   defp process_row(row, preprocess, fields) do
     fields |> Enum.map(fn f -> Map.get(row, to_string(f)) end) |> preprocess.()

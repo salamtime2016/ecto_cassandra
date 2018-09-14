@@ -3,6 +3,8 @@ defmodule EctoCassandra.Query do
   Compose CQL query from Ecto.Query
   """
 
+  require Logger
+
   alias Ecto.Query, as: Q
   alias Ecto.Query.{BooleanExpr}
   alias EctoCassandra.Types
@@ -52,14 +54,6 @@ defmodule EctoCassandra.Query do
     "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{opts}"
   end
 
-  def new(all: %Q{from: {table, _}, wheres: []}) do
-    "SELECT * FROM #{table}"
-  end
-
-  def new(all: %Q{from: {table, _}, wheres: wheres}) do
-    "SELECT * FROM #{table} WHERE #{where(wheres)} ALLOW FILTERING"
-  end
-
   def new(update: {table, params, filter}) do
     set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
     "UPDATE #{table} SET #{set} WHERE #{where(filter)}"
@@ -75,6 +69,25 @@ defmodule EctoCassandra.Query do
 
   def new(_arg) do
     ""
+  end
+
+  @spec all(Ecto.Query.t(), keyword) :: String.t()
+  def all(%Q{from: {table, _}, wheres: []}, _opts) do
+    "SELECT * FROM #{table}"
+  end
+
+  def all(%Q{from: {table, _}, wheres: wheres}, opts) do
+    allow_filtering =
+      case Keyword.get(opts, :allow_filtering, false) do
+        true ->
+          Logger.warn(fn -> "Prefer to use primary keys instead of ALLOW FILTERING" end)
+          " ALLOW FILTERING"
+
+        false ->
+          ""
+      end
+
+    "SELECT * FROM #{table} WHERE #{where(wheres)} #{allow_filtering}"
   end
 
   defp alter_commands([{:add, column, type, options} | commands]) do
