@@ -114,7 +114,11 @@ defmodule EctoCassandra.Planner do
         preprocess,
         opts
       ) do
-    Logger.debug(fn -> opts end)
+    prepared =
+      case Keyword.get(opts, :allow_filtering) do
+        true -> to_string(prepared) <> " ALLOW FILTERING"
+        _ -> prepared
+      end
 
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, prepared, sources) do
       pages = Enum.to_list(page)
