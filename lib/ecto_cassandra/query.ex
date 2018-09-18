@@ -51,12 +51,12 @@ defmodule EctoCassandra.Query do
         _ -> ""
       end
 
-    "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{opts}"
+    "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{parse_upsert_opts(opts)}"
   end
 
-  def new(update: {table, params, filter}) do
+  def new(update: {table, params, filter, opts}) do
     set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
-    "UPDATE #{table} SET #{set} WHERE #{where(filter)}"
+    "UPDATE #{table} SET #{set} WHERE #{where(filter)} #{parse_upsert_opts(opts)}"
   end
 
   def new(delete_all: %Q{from: {table, _}, wheres: wheres}) do
@@ -120,6 +120,14 @@ defmodule EctoCassandra.Query do
 
   defp where([]) do
     ""
+  end
+
+  defp parse_upsert_opts(opts) when is_list(opts) do
+    cond do
+      Keyword.get(opts, :if_not_exists, false) -> "IF NOT EXISTS"
+      Keyword.get(opts, :if_exists, false) -> "IF EXISTS"
+      true -> ""
+    end
   end
 
   # Converts Ecto operators to CQL operators
