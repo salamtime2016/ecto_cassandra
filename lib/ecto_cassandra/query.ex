@@ -45,12 +45,6 @@ defmodule EctoCassandra.Query do
   end
 
   def new(insert: {table, keys, values, opts}) do
-    opts =
-      case Keyword.get(opts, :if_not_exists, false) do
-        true -> "IF NOT EXISTS"
-        _ -> ""
-      end
-
     "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{parse_upsert_opts(opts)}"
   end
 
