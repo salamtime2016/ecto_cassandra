@@ -10,12 +10,11 @@ defmodule EctoCassandra.Query do
   alias EctoCassandra.Types
 
   @spec new(any) :: String.t() | no_return
-  def new([{:create_if_not_exists, table_name} | commands]) do
-    "CREATE TABLE IF NOT EXISTS #{table_name} (#{new(commands)})"
-  end
-
-  def new([{:create, table_name} | commands]) do
-    "CREATE TABLE #{table_name} (#{new(commands)})"
+  def new([{command, table_name} | commands]) when command in ~w(create create_if_not_exists)a do
+    not_exists = if command == :create_if_not_exists, do: "IF NOT EXISTS ", else: ""
+    primary_key = ""
+    IO.inspect(commands)
+    "CREATE TABLE #{table_name} #{not_exists} (#{new(commands)}) PRIMARY KEY (#{primary_key})"
   end
 
   def new([{:alter, table_name} | commands]) do
