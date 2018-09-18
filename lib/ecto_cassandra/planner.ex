@@ -162,8 +162,8 @@ defmodule EctoCassandra.Planner do
           {:ok, fields}
           | {:invalid, constraints}
           | no_return
-  def update(_repo, %{source: {nil, table_name}, schema: schema}, params, filter, _gen, _opts) do
-    statement = Query.new(update: {table_name, params, filter})
+  def update(_repo, %{source: {nil, table_name}, schema: schema}, params, filter, _gen, opts) do
+    statement = Query.new(update: {table_name, params, filter, opts})
     sources = prepare_sources(schema, params)
 
     with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
