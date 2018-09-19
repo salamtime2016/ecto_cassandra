@@ -11,10 +11,11 @@ defmodule EctoCassandra.Query do
 
   @spec new(any) :: String.t() | no_return
   def new([{command, table_name} | commands]) when command in ~w(create create_if_not_exists)a do
-    not_exists = if command == :create_if_not_exists, do: "IF NOT EXISTS ", else: ""
-    primary_key = ""
-    IO.inspect(commands)
-    "CREATE TABLE #{table_name} #{not_exists} (#{new(commands)}) PRIMARY KEY (#{primary_key})"
+    not_exists = if command == :create_if_not_exists, do: "IF NOT EXISTS", else: ""
+
+    "CREATE TABLE #{not_exists} #{table_name} (#{new(commands)}) PRIMARY KEY (#{
+      primary_key(commands)
+    })"
   end
 
   def new([{:alter, table_name} | commands]) do
@@ -113,6 +114,11 @@ defmodule EctoCassandra.Query do
 
   defp where([]) do
     ""
+  end
+
+  defp primary_key([{:add, field, :type, opts} | commands]) do
+    key = if Keyword.get(opts, primary_key, false), do: "#{field}, ", else: ""
+    key <> primary_key(commands)
   end
 
   defp parse_upsert_opts(opts) when is_list(opts) do
