@@ -13,18 +13,14 @@ defmodule EctoCassandra.Query do
   def new([{command, table_name} | commands]) when command in ~w(create create_if_not_exists)a do
     not_exists = if command == :create_if_not_exists, do: "IF NOT EXISTS", else: ""
 
-    "CREATE TABLE #{not_exists} #{table_name} (#{new(commands)}) PRIMARY KEY (#{
-      primary_key(commands)
-    })"
+    "CREATE TABLE #{not_exists} #{table_name} (#{compose_columns(commands)} PRIMARY KEY (#{
+      compose_keys(commands)
+    }))"
+    |> IO.inspect()
   end
 
   def new([{:alter, table_name} | commands]) do
     "ALTER TABLE #{table_name} #{alter_commands(commands)}"
-  end
-
-  def new([{:add, column, type, options} | commands]) do
-    primary_key? = if Keyword.get(options, :primary_key), do: "PRIMARY KEY", else: ""
-    "#{column} #{Types.to_db(type)} #{primary_key?}, " <> new(commands)
   end
 
   def new(rename: [table, from, to]) do
@@ -116,9 +112,46 @@ defmodule EctoCassandra.Query do
     ""
   end
 
-  defp primary_key([{:add, field, :type, opts} | commands]) do
-    key = if Keyword.get(opts, primary_key, false), do: "#{field}, ", else: ""
-    key <> primary_key(commands)
+  defp compose_keys(commands) when is_list(commands) do
+    {partition_keys, clustering_columns} = Enum.reduce(commands, {[], []}, &compose_keys/2)
+
+    partition_keys =
+      if length(partition_keys) > 1,
+        do: "(#{Enum.join(partition_keys, ", ")})",
+        else: partition_keys |> hd |> to_string
+
+    clustering_columns =
+      if length(clustering_columns) > 0, do: ", #{Enum.join(clustering_columns, ", ")}", else: " "
+
+    partition_keys <> clustering_columns
+  end
+
+  defp compose_columns([{:add, column, type, _options} | commands]) do
+    "#{column} #{Types.to_db(type)}, " <> compose_columns(commands)
+  end
+
+  defp compose_columns(_) do
+    ""
+  end
+
+  defp compose_keys({:add, field, _type, opts}, {partition_keys, clustering_columns} = acc) do
+    cond do
+      Keyword.get(opts, :primary_key, false) ->
+        {[field | partition_keys], clustering_columns}
+
+      Keyword.get(opts, :partition_key, false) ->
+        {[field | partition_keys], clustering_columns}
+
+      Keyword.get(opts, :clustering_column) ->
+        {partition_keys, [field | clustering_columns]}
+
+      true ->
+        acc
+    end
+  end
+
+  defp compose_keys(_, acc) do
+    acc
   end
 
   defp parse_upsert_opts(opts) when is_list(opts) do
