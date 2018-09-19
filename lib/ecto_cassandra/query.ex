@@ -10,13 +10,14 @@ defmodule EctoCassandra.Query do
   alias EctoCassandra.Types
 
   @spec new(any) :: String.t() | no_return
-  def new([{command, table_name} | commands]) when command in ~w(create create_if_not_exists)a do
+  def new([{command, table_name, opts} | commands])
+      when command in ~w(create create_if_not_exists)a do
     not_exists = if command == :create_if_not_exists, do: "IF NOT EXISTS", else: ""
+    options = opts || []
 
     "CREATE TABLE #{not_exists} #{table_name} (#{compose_columns(commands)} PRIMARY KEY (#{
       compose_keys(commands)
-    }))"
-    |> IO.inspect()
+    })) #{compose_options(options)}"
   end
 
   def new([{:alter, table_name} | commands]) do
@@ -153,6 +154,11 @@ defmodule EctoCassandra.Query do
   defp compose_keys(_, acc) do
     acc
   end
+
+  defp compose_options(clustering_order_by: [{field, direction}]),
+    do: "WITH CLUSTERING ORDER BY (#{field} #{direction})"
+
+  defp compose_options(_), do: ""
 
   defp parse_upsert_opts(opts) when is_list(opts) do
     cond do
