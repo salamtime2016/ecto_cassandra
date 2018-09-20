@@ -4,7 +4,6 @@ defmodule EctoCassandra.Planner do
   """
 
   require Logger
-  alias Ecto.UUID
   alias EctoCassandra.{Conn, Query, Types}
 
   @behaviour Ecto.Adapter
@@ -75,11 +74,11 @@ defmodule EctoCassandra.Planner do
   """
   @spec autogenerate(:binary_id | :embed_id) :: <<_::288>>
   def autogenerate(:embed_id) do
-    UUID.generate()
+    Elixir.UUID.uuid1()
   end
 
   def autogenerate(:binary_id) do
-    UUID.autogenerate()
+    Elixir.UUID.uuid1()
   end
 
   def autogenerate(_) do
