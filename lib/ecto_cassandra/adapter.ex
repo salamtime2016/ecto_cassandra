@@ -51,6 +51,12 @@ defmodule EctoCassandra.Adapter do
   @spec rollback(any, any) :: nil
   def rollback(_repo, _tid), do: nil
 
+  @doc """
+  Cassandra batch transactions
+  """
+  @spec batch(keyword) :: any
+  defdelegate batch(args), to: @adapter
+
   @doc false
   defdelegate autogenerate(type), to: @adapter
 
