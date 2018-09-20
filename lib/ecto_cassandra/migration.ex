@@ -12,9 +12,9 @@ defmodule EctoCassandra.Migration do
           Ecto.Adapter.Migration.command(),
           options :: Keyword.t()
         ) :: :ok | no_return
-  def execute_ddl(_repo, {command, %Table{name: table_name, options: options}, commands}, _opts)
+  def execute_ddl(_repo, {command, %Table{name: table_name}, commands}, _opts)
       when command in ~w(create_if_not_exists create)a do
-    cql = Query.new([{command, table_name, options}] ++ commands)
+    cql = Query.new([{command, table_name}] ++ commands)
     with %SchemaChange{effect: "CREATED"} <- Xandra.execute!(Conn, cql), do: :ok
   end
 
