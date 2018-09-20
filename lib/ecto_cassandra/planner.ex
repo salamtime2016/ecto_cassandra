@@ -136,9 +136,11 @@ defmodule EctoCassandra.Planner do
     statement = Query.new(insert: {table, keys, values, opts})
     prepared_sources = prepare_sources(schema, sources)
 
-    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources) do
+    with false <- Keyword.get(opts, :dont_execute, false),
+         {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources) do
       {:ok, []}
     else
+      true -> [statement, prepared_sources]
       {:ok, %Xandra.Page{} = page} -> check_applied(page)
       err -> err
     end
@@ -165,9 +167,11 @@ defmodule EctoCassandra.Planner do
     statement = Query.new(update: {table_name, params, filter, opts})
     sources = prepare_sources(schema, params)
 
-    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
+    with false <- Keyword.get(opts, :dont_execute, false),
+         {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
       {:ok, []}
     else
+      true -> [statement, sources]
       {:error, any} -> {:invalid, any}
     end
   end
