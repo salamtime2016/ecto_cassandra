@@ -211,12 +211,6 @@ defmodule EctoCassandra.Planner do
 
   def dumpers(_primitive, type), do: [type]
 
-  @spec batch(keyword) :: any
-  defmacro batch(do: do_block) do
-    IO.inspect(do_block)
-    "BEGIN BATCH APPLY BATCH"
-  end
-
   defp check_applied(page) do
     case Enum.to_list(page) do
       [%{"[applied]" => true}] -> {:ok, []}
