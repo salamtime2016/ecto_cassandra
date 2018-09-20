@@ -67,18 +67,8 @@ defmodule EctoCassandra.Query do
     "SELECT * FROM #{table}"
   end
 
-  def all(%Q{from: {table, _}, wheres: wheres}, opts) do
-    allow_filtering =
-      case Keyword.get(opts, :allow_filtering, false) do
-        true ->
-          Logger.warn(fn -> "Prefer to use primary keys instead of ALLOW FILTERING" end)
-          " ALLOW FILTERING"
-
-        false ->
-          ""
-      end
-
-    "SELECT * FROM #{table} WHERE #{where(wheres)} #{allow_filtering}"
+  def all(%Q{from: {table, _}, wheres: wheres}, _opts) do
+    "SELECT * FROM #{table} WHERE #{where(wheres)}"
   end
 
   defp alter_commands([{:add, column, type, options} | commands]) do
