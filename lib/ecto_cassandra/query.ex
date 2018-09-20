@@ -10,14 +10,42 @@ defmodule EctoCassandra.Query do
   alias EctoCassandra.Types
 
   @spec new(any) :: String.t() | no_return
-  def new([{command, table_name, opts} | commands])
+  def new([{command, table_name} | commands])
       when command in ~w(create create_if_not_exists)a do
     not_exists = if command == :create_if_not_exists, do: "IF NOT EXISTS", else: ""
-    options = opts || []
+
+    {partition_keys, clustering_columns} = compose_keys(commands)
+
+    partition_keys =
+      case length(partition_keys) > 1 do
+        true -> "(#{Enum.join(partition_keys, ", ")})"
+        false -> partition_keys |> hd |> to_string
+      end
+
+    options =
+      case length(clustering_columns) > 0 do
+        true ->
+          order =
+            Enum.map_join(clustering_columns, ",", fn {key, direction} ->
+              "#{key} #{direction}"
+            end)
+
+          "WITH CLUSTERING ORDER BY (#{order})"
+
+        false ->
+          ""
+      end
+
+    clustering_columns =
+      case length(clustering_columns) > 0 do
+        true -> ", " <> Enum.map_join(clustering_columns, ", ", &elem(&1, 0))
+        false -> ""
+      end
 
     "CREATE TABLE #{not_exists} #{table_name} (#{compose_columns(commands)} PRIMARY KEY (#{
-      compose_keys(commands)
-    })) #{compose_options(options)}"
+      partition_keys
+    }#{clustering_columns})) #{options}"
+    |> IO.inspect()
   end
 
   def new([{:alter, table_name} | commands]) do
@@ -103,20 +131,6 @@ defmodule EctoCassandra.Query do
     ""
   end
 
-  defp compose_keys(commands) when is_list(commands) do
-    {partition_keys, clustering_columns} = Enum.reduce(commands, {[], []}, &compose_keys/2)
-
-    partition_keys =
-      if length(partition_keys) > 1,
-        do: "(#{Enum.join(partition_keys, ", ")})",
-        else: partition_keys |> hd |> to_string
-
-    clustering_columns =
-      if length(clustering_columns) > 0, do: ", #{Enum.join(clustering_columns, ", ")}", else: " "
-
-    partition_keys <> clustering_columns
-  end
-
   defp compose_columns([{:add, column, type, _options} | commands]) do
     "#{column} #{Types.to_db(type)}, " <> compose_columns(commands)
   end
@@ -125,7 +139,13 @@ defmodule EctoCassandra.Query do
     ""
   end
 
+  defp compose_keys(commands) when is_list(commands) do
+    Enum.reduce(commands, {[], []}, &compose_keys/2)
+  end
+
   defp compose_keys({:add, field, _type, opts}, {partition_keys, clustering_columns} = acc) do
+    clustering_order = Keyword.get(opts, :clustering_column)
+
     cond do
       Keyword.get(opts, :primary_key, false) ->
         {[field | partition_keys], clustering_columns}
@@ -133,8 +153,8 @@ defmodule EctoCassandra.Query do
       Keyword.get(opts, :partition_key, false) ->
         {[field | partition_keys], clustering_columns}
 
-      Keyword.get(opts, :clustering_column) ->
-        {partition_keys, [field | clustering_columns]}
+      clustering_order in ~w(asc desc)a ->
+        {partition_keys, [{field, clustering_order} | clustering_columns]}
 
       true ->
         acc
@@ -144,11 +164,6 @@ defmodule EctoCassandra.Query do
   defp compose_keys(_, acc) do
     acc
   end
-
-  defp compose_options(clustering_order_by: [{field, direction}]),
-    do: "WITH CLUSTERING ORDER BY (#{field} #{direction})"
-
-  defp compose_options(_), do: ""
 
   defp parse_upsert_opts(opts) when is_list(opts) do
     cond do
