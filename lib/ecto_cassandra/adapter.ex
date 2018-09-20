@@ -55,8 +55,11 @@ defmodule EctoCassandra.Adapter do
 
   @doc """
   Cassandra batches
+
+  Accepts list of statements and running these queries in a batch.
+  Returns `{:ok, Xandra.Void.t}` or `{:error, any}`
   """
-  @spec batch([String.t()]) :: any
+  @spec batch([String.t()]) :: {:ok, Xandra.Void.t()} | {:error, any}
   def batch(queries) do
     batch =
       Enum.reduce(queries, Batch.new(:logged), fn q, acc ->
