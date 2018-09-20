@@ -9,6 +9,8 @@ defmodule EctoCassandra.Adapter do
   @migration_adapter EctoCassandra.Migration
   @structure_adapter EctoCassandra.Structure
 
+  alias Xandra.Batch
+
   @doc false
   defmacro __before_compile__(_env), do: :ok
 
@@ -55,7 +57,14 @@ defmodule EctoCassandra.Adapter do
   Cassandra batch transactions
   """
   @spec batch(keyword) :: any
-  defdelegate batch(args), to: @adapter
+  defmacro batch(do: do_block) do
+    IO.inspect(do_block)
+
+    quote do
+      batch = Batch.new(:logged)
+      Xandra.execute(EctoCassandra.Conn, batch)
+    end
+  end
 
   @doc false
   defdelegate autogenerate(type), to: @adapter
