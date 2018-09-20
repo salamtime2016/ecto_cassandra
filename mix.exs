@@ -38,7 +38,8 @@ defmodule EctoCassandra.MixProject do
       {:faker, "~> 0.10", only: :test},
       {:mix_test_watch, "~> 0.7", only: :dev, runtime: false},
       {:mox, "~> 0.4", only: :test},
-      {:xandra, "~> 0.9"}
+      {:xandra, "~> 0.9"},
+      {:uuid, "~> 1.1"}
     ]
   end
 
