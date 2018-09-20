@@ -189,7 +189,7 @@ defmodule EctoCassandra.Planner do
         ]
   def loaders(:binary_id, type) do
     [
-      &case UUID.cast(&1) do
+      &case Ecto.UUID.cast(&1) do
         {:ok, uuid} -> {:ok, uuid}
         _ -> {:ok, &1}
       end,

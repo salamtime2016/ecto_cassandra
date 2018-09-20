@@ -45,7 +45,6 @@ defmodule EctoCassandra.Query do
     "CREATE TABLE #{not_exists} #{table_name} (#{compose_columns(commands)} PRIMARY KEY (#{
       partition_keys
     }#{clustering_columns})) #{options}"
-    |> IO.inspect()
   end
 
   def new([{:alter, table_name} | commands]) do

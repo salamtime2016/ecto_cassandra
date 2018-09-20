@@ -54,16 +54,16 @@ defmodule EctoCassandra.Adapter do
   def rollback(_repo, _tid), do: nil
 
   @doc """
-  Cassandra batch transactions
+  Cassandra batches
   """
-  @spec batch(keyword) :: any
-  defmacro batch(do: do_block) do
-    IO.inspect(do_block)
+  @spec batch([String.t()]) :: any
+  def batch(queries) do
+    batch =
+      Enum.reduce(queries, Batch.new(:logged), fn q, acc ->
+        apply(Batch, :add, [acc] ++ [q])
+      end)
 
-    quote do
-      batch = Batch.new(:logged)
-      Xandra.execute(EctoCassandra.Conn, batch)
-    end
+    Xandra.execute(EctoCassandra.Conn, batch)
   end
 
   @doc false
