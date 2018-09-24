@@ -9,6 +9,16 @@ defmodule EctoCassandra.Query do
   alias Ecto.Query.{BooleanExpr}
   alias EctoCassandra.Types
 
+  @operators_map %{
+    :== => "=",
+    :< => "<",
+    :> => ">",
+    :<= => "<=",
+    :>= => ">=",
+    :!= => "!=",
+    :and => "AND"
+  }
+
   @spec new(any) :: String.t() | no_return
   def new([{command, table_name} | commands])
       when command in ~w(create create_if_not_exists)a do
@@ -78,7 +88,11 @@ defmodule EctoCassandra.Query do
   end
 
   def new(delete_all: %Q{from: {table, _}, wheres: wheres}) do
-    "DELETE FROM #{table} WHERE #{where(wheres)}"
+    new(delete: {table, wheres})
+  end
+
+  def new(delete: {table, []}) do
+    "TRUNCATE #{table}"
   end
 
   def new(delete: {table, filters}) do
@@ -121,13 +135,37 @@ defmodule EctoCassandra.Query do
     "#{key} = #{val}"
   end
 
-  defp where(%BooleanExpr{expr: {op, [], [left, _right]}}) do
-    {{_arg, [], [{:&, [], [0]}, field]}, [], []} = left
-    "#{field} #{op_to_cql(op)} ?"
+  defp where(%BooleanExpr{expr: {:and, [], [left, right]}}) do
+    "#{parse_expr(left)} #{@operators_map[:and]} #{parse_expr(right)}"
+  end
+
+  defp where(%BooleanExpr{expr: _}) do
+    raise ArgumentError, "Only AND argument is supported in Cassandra"
   end
 
   defp where([]) do
     ""
+  end
+
+  defp parse_expr({arg, [], [left, right]}) do
+    "#{parse_expr(left)} #{@operators_map[arg]} #{parse_expr(right)}"
+  end
+
+  defp parse_expr({{:., [], [{:&, _, _}, key]}, _, _}) do
+    key
+  end
+
+  defp parse_expr({:^, [], [_, count]}) do
+    questions =
+      1..count
+      |> Enum.map(fn _ -> "?" end)
+      |> Enum.intersperse(", ")
+
+    ["(", questions, ")"]
+  end
+
+  defp parse_expr({:^, [], [_]}) do
+    "?"
   end
 
   defp compose_columns([{:add, column, type, _options} | commands]) do
@@ -171,8 +209,4 @@ defmodule EctoCassandra.Query do
       true -> ""
     end
   end
-
-  # Converts Ecto operators to CQL operators
-  defp op_to_cql(:==), do: "="
-  defp op_to_cql(op), do: to_string(op)
 end
