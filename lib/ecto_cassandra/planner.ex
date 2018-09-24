@@ -116,6 +116,12 @@ defmodule EctoCassandra.Planner do
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, prepared, sources) do
       pages = Enum.to_list(page)
       {length(pages), Enum.map(pages, &process_row(&1, preprocess, schema.__schema__(:fields)))}
+    else
+      %Xandra.Void{} ->
+        {0, []}
+
+      err ->
+        err
     end
   end
 
