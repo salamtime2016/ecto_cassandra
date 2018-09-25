@@ -19,6 +19,8 @@ defmodule EctoCassandra.Query do
     :and => "AND"
   }
 
+  @operators Map.keys(@operators_map)
+
   @spec new(any) :: String.t() | no_return
   def new([{command, table_name} | commands])
       when command in ~w(create create_if_not_exists)a do
@@ -135,12 +137,12 @@ defmodule EctoCassandra.Query do
     "#{key} = #{val}"
   end
 
-  defp where(%BooleanExpr{expr: {:and, [], [left, right]}}) do
-    "#{parse_expr(left)} #{@operators_map[:and]} #{parse_expr(right)}"
+  defp where(%BooleanExpr{expr: {op, [], [left, right]}}) when op in @operators do
+    "#{parse_expr(left)} #{@operators_map[op]} #{parse_expr(right)}"
   end
 
   defp where(%BooleanExpr{expr: _}) do
-    raise ArgumentError, "Only AND argument is supported in Cassandra"
+    raise ArgumentError, "This operator is not supported in Cassandra"
   end
 
   defp where([]) do
