@@ -25,34 +25,7 @@ defmodule EctoCassandra.Query do
   def new([{command, table_name} | commands])
       when command in ~w(create create_if_not_exists)a do
     not_exists = if command == :create_if_not_exists, do: "IF NOT EXISTS", else: ""
-
-    {partition_keys, clustering_columns} = compose_keys(commands)
-
-    partition_keys =
-      case length(partition_keys) > 1 do
-        true -> "(#{Enum.join(partition_keys, ", ")})"
-        false -> partition_keys |> hd |> to_string
-      end
-
-    options =
-      case length(clustering_columns) > 0 do
-        true ->
-          order =
-            Enum.map_join(clustering_columns, ",", fn {key, direction} ->
-              "#{key} #{direction}"
-            end)
-
-          "WITH CLUSTERING ORDER BY (#{order})"
-
-        false ->
-          ""
-      end
-
-    clustering_columns =
-      case length(clustering_columns) > 0 do
-        true -> ", " <> Enum.map_join(clustering_columns, ", ", &elem(&1, 0))
-        false -> ""
-      end
+    {partition_keys, clustering_columns, options} = commands |> compose_keys |> format_keys
 
     "CREATE TABLE #{not_exists} #{table_name} (#{compose_columns(commands)} PRIMARY KEY (#{
       partition_keys
@@ -81,28 +54,29 @@ defmodule EctoCassandra.Query do
   end
 
   def new(insert: {table, keys, values, opts}) do
-    "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{parse_upsert_opts(opts)}"
+    "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{parse_opts(opts)}"
   end
 
   def new(update: {table, params, filter, opts}) do
     set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
-    "UPDATE #{table} SET #{set} WHERE #{where(filter)} #{parse_upsert_opts(opts)}"
+    "UPDATE #{table} SET #{set} WHERE #{where(filter)} #{parse_opts(opts)}"
   end
 
   def new(delete_all: %Q{from: {table, _}, wheres: wheres}) do
-    new(delete: {table, wheres})
-  end
-
-  def new(delete: {table, []}) do
-    "TRUNCATE #{table}"
-  end
-
-  def new(delete: {table, filters}) do
-    "DELETE FROM #{table} WHERE #{where(filters)}"
+    delete({table, wheres, []})
   end
 
   def new(_arg) do
     ""
+  end
+
+  @spec delete({any, list, keyword}) :: String.t()
+  def delete({table, [], _opts}) do
+    "TRUNCATE #{table}"
+  end
+
+  def delete({table, filters, opts}) do
+    "DELETE FROM #{table} WHERE #{where(filters)} #{parse_opts(opts)}"
   end
 
   @spec all(Ecto.Query.t(), keyword) :: String.t()
@@ -204,7 +178,37 @@ defmodule EctoCassandra.Query do
     acc
   end
 
-  defp parse_upsert_opts(opts) when is_list(opts) do
+  defp format_keys({partition_keys, clustering_columns}) do
+    partition_keys_formatted =
+      case length(partition_keys) > 1 do
+        true -> "(#{Enum.join(partition_keys, ", ")})"
+        false -> partition_keys |> hd |> to_string
+      end
+
+    options =
+      case length(clustering_columns) > 0 do
+        true ->
+          order =
+            Enum.map_join(clustering_columns, ",", fn {key, direction} ->
+              "#{key} #{direction}"
+            end)
+
+          "WITH CLUSTERING ORDER BY (#{order})"
+
+        false ->
+          ""
+      end
+
+    clustering_columns_formatted =
+      case length(clustering_columns) > 0 do
+        true -> ", " <> Enum.map_join(clustering_columns, ", ", &elem(&1, 0))
+        false -> ""
+      end
+
+    {partition_keys_formatted, clustering_columns_formatted, options}
+  end
+
+  defp parse_opts(opts) when is_list(opts) do
     cond do
       Keyword.get(opts, :if_not_exists, false) -> "IF NOT EXISTS"
       Keyword.get(opts, :if_exists, false) -> "IF EXISTS"
