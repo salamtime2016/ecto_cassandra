@@ -58,6 +58,14 @@ defmodule EctoCassandra.Adapter do
 
   Accepts list of statements and running these queries in a batch.
   Returns `{:ok, Xandra.Void.t}` or `{:error, any}`
+
+  Example:
+
+  ```
+  EctoCassandra.Adapter.batch([%User{} |> User.changeset(attrs) |> Repo.insert(execute: false),
+    %User{} |> User.changeset(another_attrs) |> Repo.insert(execute: false)
+  ])
+  ```
   """
   @spec batch([String.t()]) :: {:ok, Xandra.Void.t()} | {:error, any}
   def batch(queries) do
