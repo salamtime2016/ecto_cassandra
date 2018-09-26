@@ -142,11 +142,11 @@ defmodule EctoCassandra.Planner do
     statement = Query.new(insert: {table, keys, values, opts})
     prepared_sources = prepare_sources(schema, sources)
 
-    with false <- Keyword.get(opts, :dont_execute, false),
+    with true <- Keyword.get(opts, :execute, true),
          {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources) do
       {:ok, []}
     else
-      true -> [statement, prepared_sources]
+      false -> [statement, prepared_sources]
       {:ok, %Xandra.Page{} = page} -> check_applied(page)
       err -> err
     end
@@ -173,11 +173,11 @@ defmodule EctoCassandra.Planner do
     statement = Query.new(update: {table_name, params, filter, opts})
     sources = prepare_sources(schema, params)
 
-    with false <- Keyword.get(opts, :dont_execute, false),
+    with true <- Keyword.get(opts, :execute, true),
          {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
       {:ok, []}
     else
-      true -> [statement, sources]
+      false -> [statement, sources]
       {:error, any} -> {:invalid, any}
     end
   end
@@ -186,10 +186,14 @@ defmodule EctoCassandra.Planner do
           {:ok, fields}
           | {:invalid, constraints}
           | no_return
-  def delete(_repo, %{source: {nil, table_name}}, filters, _opts) do
-    with %Xandra.Void{} <- Xandra.execute!(Conn, Query.new(delete: {table_name, filters})) do
+  def delete(_repo, %{source: {nil, table_name}}, filters, opts) do
+    statement = Query.new(delete: {table_name, filters})
+
+    with true <- Keyword.get(opts, :execute, true),
+         %Xandra.Void{} <- Xandra.execute!(Conn, statement) do
       {:ok, []}
     else
+      false -> [statement, []]
       err -> {:invalid, err}
     end
   end
