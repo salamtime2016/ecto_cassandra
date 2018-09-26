@@ -54,12 +54,12 @@ defmodule EctoCassandra.Query do
   end
 
   def new(insert: {table, keys, values, opts}) do
-    "INSERT INTO #{table} (#{keys}) VALUES (#{values}) #{parse_opts(opts)}"
+    "INSERT INTO #{table} (#{keys}) VALUES (#{values})#{parse_opts(opts)}"
   end
 
   def new(update: {table, params, filter, opts}) do
     set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
-    "UPDATE #{table} SET #{set} WHERE #{where(filter)} #{parse_opts(opts)}"
+    "UPDATE #{table} SET #{set} WHERE #{where(filter)}#{parse_opts(opts)}"
   end
 
   def new(delete_all: %Q{from: {table, _}, wheres: wheres}) do
@@ -76,7 +76,7 @@ defmodule EctoCassandra.Query do
   end
 
   def delete({table, filters, opts}) do
-    "DELETE FROM #{table} WHERE #{where(filters)} #{parse_opts(opts)}"
+    "DELETE FROM #{table} WHERE #{where(filters)}#{parse_opts(opts)}"
   end
 
   @spec all(Ecto.Query.t(), keyword) :: String.t()
@@ -86,6 +86,19 @@ defmodule EctoCassandra.Query do
 
   def all(%Q{from: {table, _}, wheres: wheres}, _opts) do
     "SELECT * FROM #{table} WHERE #{where(wheres)}"
+  end
+
+  @spec parse_opts(keyword) :: String.t()
+  def parse_opts(if: opts) do
+    parse_opts(opts)
+  end
+
+  def parse_opts(opts) when is_list(opts) do
+    cond do
+      not Keyword.has_key?(opts, :exists) -> ""
+      Keyword.get(opts, :exists, true) -> " IF EXISTS"
+      true -> "IF NOT EXISTS"
+    end
   end
 
   defp alter_commands([{:add, column, type, options} | commands]) do
@@ -113,6 +126,13 @@ defmodule EctoCassandra.Query do
 
   defp where(%BooleanExpr{expr: {op, [], [left, right]}}) when op in @operators do
     "#{parse_expr(left)} #{@operators_map[op]} #{parse_expr(right)}"
+  end
+
+  defp where(%BooleanExpr{expr: {:fragment, _, parts}}) do
+    Enum.map_join(parts, " AND ", fn
+      {:raw, str} -> " #{str}"
+      {:expr, expr} -> parse_expr(expr)
+    end)
   end
 
   defp where(%BooleanExpr{expr: _}) do
@@ -206,13 +226,5 @@ defmodule EctoCassandra.Query do
       end
 
     {partition_keys_formatted, clustering_columns_formatted, options}
-  end
-
-  defp parse_opts(opts) when is_list(opts) do
-    cond do
-      Keyword.get(opts, :if_not_exists, false) -> "IF NOT EXISTS"
-      Keyword.get(opts, :if_exists, false) -> "IF EXISTS"
-      true -> ""
-    end
   end
 end
