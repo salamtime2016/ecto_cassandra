@@ -114,14 +114,23 @@ defmodule EctoCassandra.Planner do
         _opts
       ) do
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, prepared, sources) do
-      pages = Enum.to_list(page)
-      {length(pages), Enum.map(pages, &process_row(&1, preprocess, schema.__schema__(:fields)))}
+      process_page(page, schema, preprocess)
     else
       %Xandra.Void{} ->
         {0, []}
 
       err ->
         err
+    end
+  end
+
+  defp process_page(page, schema, preprocess) do
+    case Enum.to_list(page) do
+      [%{"[applied]" => true}] ->
+        {1, []}
+
+      pages ->
+        {length(pages), Enum.map(pages, &process_row(&1, preprocess, schema.__schema__(:fields)))}
     end
   end
 
@@ -232,9 +241,10 @@ defmodule EctoCassandra.Planner do
     end
   end
 
-  defp process_row(row, preprocess, fields) do
-    fields |> Enum.map(fn f -> Map.get(row, to_string(f)) end) |> preprocess.()
-  end
+  defp process_row(row, preprocess, fields) when is_function(preprocess),
+    do: fields |> Enum.map(fn f -> Map.get(row, to_string(f)) end) |> preprocess.()
+
+  defp process_row(row, _, fields), do: process_row(row, & &1, fields)
 
   defp prepare_sources(schema, sources) do
     for k <- Keyword.keys(sources), into: %{} do
