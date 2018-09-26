@@ -187,12 +187,13 @@ defmodule EctoCassandra.Planner do
           | {:invalid, constraints}
           | no_return
   def delete(_repo, %{source: {nil, table_name}}, filters, opts) do
-    statement = Query.new(delete: {table_name, filters})
+    statement = Query.delete({table_name, filters, opts})
 
     with true <- Keyword.get(opts, :execute, true),
          %Xandra.Void{} <- Xandra.execute!(Conn, statement) do
       {:ok, []}
     else
+      {:ok, %Xandra.Page{} = page} -> check_applied(page)
       false -> [statement, []]
       err -> {:invalid, err}
     end
@@ -227,7 +228,7 @@ defmodule EctoCassandra.Planner do
   defp check_applied(page) do
     case Enum.to_list(page) do
       [%{"[applied]" => true}] -> {:ok, []}
-      _ -> {:invalid, unique: "was already exists"}
+      _ -> {:invalid, exists: "was not applied"}
     end
   end
 
