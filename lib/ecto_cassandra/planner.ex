@@ -103,8 +103,13 @@ defmodule EctoCassandra.Planner do
   @spec execute(repo, query_meta, query, params :: list, process | nil, options) :: result
         when result: {integer, [[term]] | nil} | no_return,
              query:
-               {:cached, (prepared -> :ok), cached}
+               {:nocache, prepared()}
+               | {:cached, (prepared -> :ok), cached}
                | {:cache, (cached -> :ok), prepared}
+  def execute(repo, query, {:nocache, prepared}, sources, preprocess, opts) do
+    execute(repo, query, {:cache, nil, prepared}, sources, preprocess, opts)
+  end
+
   def execute(
         _repo,
         %{sources: {{_table_name, schema}}},
