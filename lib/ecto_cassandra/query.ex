@@ -1,3 +1,5 @@
+require IEx
+
 defmodule EctoCassandra.Query do
   @moduledoc """
   Compose CQL query from Ecto.Query
@@ -16,6 +18,7 @@ defmodule EctoCassandra.Query do
     :<= => "<=",
     :>= => ">=",
     :!= => "!=",
+    :in => " IN ",
     :and => "AND"
   }
 
@@ -57,9 +60,18 @@ defmodule EctoCassandra.Query do
     "INSERT INTO #{table} (#{keys}) VALUES (#{values})#{parse_opts(opts)}"
   end
 
-  def new(update: {table, params, filter, opts}) do
+  def new(update_all: %{from: {table, _}, updates: updates, wheres: wheres}) do
+    set = Enum.map_join(updates, ", ", &parse_update(&1.expr))
+    new(update: {table, "SET #{set}", wheres, []})
+  end
+
+  def new(update: {table, params, filter, opts}) when is_list(params) do
     set = params |> Keyword.keys() |> Enum.map_join(", ", fn k -> "#{k} = ?" end)
-    "UPDATE #{table} SET #{set} WHERE #{where(filter)}#{parse_opts(opts)}"
+    new(update: {table, "SET #{set}", filter, opts})
+  end
+
+  def new(update: {table, set, filter, opts}) do
+    "UPDATE #{table} #{set} WHERE #{where(filter)}#{parse_opts(opts)}"
   end
 
   def new(delete_all: %Q{from: {table, _}, wheres: wheres}) do
@@ -143,25 +155,25 @@ defmodule EctoCassandra.Query do
     ""
   end
 
-  defp parse_expr({arg, [], [left, right]}) do
-    "#{parse_expr(left)} #{@operators_map[arg]} #{parse_expr(right)}"
-  end
-
   defp parse_expr({{:., [], [{:&, _, _}, key]}, _, _}) do
     key
   end
 
+  defp parse_expr({:^, [], [_]}) do
+    "?"
+  end
+
   defp parse_expr({:^, [], [_, count]}) do
-    questions =
+    marks =
       1..count
       |> Enum.map(fn _ -> "?" end)
       |> Enum.intersperse(", ")
 
-    ["(", questions, ")"]
+    ["(", marks, ")"]
   end
 
-  defp parse_expr({:^, [], [_]}) do
-    "?"
+  defp parse_expr({arg, [], [left, right]}) do
+    "#{parse_expr(left)} #{@operators_map[arg]} #{parse_expr(right)}"
   end
 
   defp compose_columns([{:add, column, type, _options} | commands]) do
@@ -227,4 +239,13 @@ defmodule EctoCassandra.Query do
 
     {partition_keys_formatted, clustering_columns_formatted, options}
   end
+
+  defp parse_update([{op, expressions}]) when op in ~w(set inc push pull)a do
+    for {k, v} <- expressions, do: parse_update(op, k, parse_expr(v))
+  end
+
+  defp parse_update(:set, key, value), do: "#{key} = #{value}"
+  defp parse_update(:inc, key, value), do: "#{key} = #{key} + #{value}"
+  defp parse_update(:push, key, value), do: "#{key} =#{key} + [#{value}]"
+  defp parse_update(:pull, key, value), do: "#{key} =#{key} - [#{value}]"
 end
