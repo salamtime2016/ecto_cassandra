@@ -97,6 +97,7 @@ defmodule EctoCassandra.Planner do
 
   def prepare(operation, query) do
     prepared = Xandra.prepare!(Conn, EctoCassandra.Query.new([{operation, query}]))
+
     {:cache, prepared}
   end
 
