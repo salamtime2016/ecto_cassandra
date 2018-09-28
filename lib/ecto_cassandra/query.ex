@@ -141,7 +141,10 @@ defmodule EctoCassandra.Query do
   end
 
   defp where(%BooleanExpr{expr: {:fragment, _, parts}}) do
-    Enum.map_join(parts, " AND ", fn
+    parts
+    |> Keyword.to_list()
+    |> Enum.reject(fn {_k, v} -> v == "" end)
+    |> Enum.map_join(" ", fn
       {:raw, str} -> " #{str}"
       {:expr, expr} -> parse_expr(expr)
     end)
