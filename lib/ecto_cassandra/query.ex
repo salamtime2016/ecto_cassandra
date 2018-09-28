@@ -1,5 +1,3 @@
-require IEx
-
 defmodule EctoCassandra.Query do
   @moduledoc """
   Compose CQL query from Ecto.Query
