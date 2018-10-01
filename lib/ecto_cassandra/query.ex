@@ -8,6 +8,7 @@ defmodule EctoCassandra.Query do
   alias Ecto.Query, as: Q
   alias Ecto.Query.{BooleanExpr}
   alias EctoCassandra.Types
+  alias Xandra.Batch
 
   @operators_map %{
     :== => "=",
@@ -52,6 +53,11 @@ defmodule EctoCassandra.Query do
 
   def new(drop_index: index_name) do
     "DROP INDEX #{index_name}"
+  end
+
+  def new(insert_all: {table, header, opts}) do
+    marks = Enum.map_join(1..length(header), ", ", fn _ -> "?" end)
+    "INSERT INTO #{table} (#{Enum.join(header, ", ")}) VALUES (#{marks}) #{parse_opts(opts)}"
   end
 
   def new(insert: {table, keys, values, opts}) do

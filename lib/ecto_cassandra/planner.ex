@@ -170,11 +170,19 @@ defmodule EctoCassandra.Planner do
   @spec insert_all(repo, schema_meta, header :: [atom], [fields], any, returning, options) ::
           {integer, [[term]] | nil}
           | no_return
-  def insert_all(_repo, %{source: {_, table}}, _header, rows, _on_conflict, _returning, _opts) do
-    # :ok = Logger.debug(fn -> {returning, header} end)
-    statement = "INSERT INTO #{table}"
+  def insert_all(
+        _repo,
+        %{source: {_, table}, schema: schema},
+        header,
+        rows,
+        _on_conflict,
+        _returning,
+        opts
+      ) do
+    prepared = Xandra.prepare!(Conn, Query.new(insert_all: {table, header, opts}))
+    batch = Enum.reduce(rows, Batch.new(), &Batch.add(&2, prepared, prepare_sources(schema, &1)))
 
-    with %Xandra.Page{} = page <- Xandra.execute!(Conn, statement, rows) do
+    with %Xandra.Page{} = page <- Xandra.execute!(Conn, batch) do
       pages = Enum.to_list(page)
       {length(pages), pages}
     end
