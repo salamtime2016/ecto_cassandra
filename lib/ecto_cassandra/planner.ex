@@ -5,6 +5,7 @@ defmodule EctoCassandra.Planner do
 
   require Logger
   alias EctoCassandra.{Conn, Query, Types}
+  alias Xandra.Batch
 
   @behaviour Ecto.Adapter
 
@@ -152,9 +153,7 @@ defmodule EctoCassandra.Planner do
         _returning,
         opts
       ) do
-    keys = sources |> Keyword.keys() |> Enum.join(", ")
-    values = sources |> Enum.map(fn _ -> "?" end) |> Enum.join(", ")
-    statement = Query.new(insert: {table, keys, values, opts})
+    statement = Query.new(insert: {table, sources, opts})
     prepared_sources = prepare_sources(schema, sources)
 
     with true <- Keyword.get(opts, :execute, true),
@@ -180,7 +179,13 @@ defmodule EctoCassandra.Planner do
         opts
       ) do
     prepared = Xandra.prepare!(Conn, Query.new(insert_all: {table, header, opts}))
-    batch = Enum.reduce(rows, Batch.new(), &Batch.add(&2, prepared, prepare_sources(schema, &1)))
+
+    batch =
+      Enum.reduce(
+        rows,
+        Batch.new(),
+        &Batch.add(&2, prepared, &1 |> Keyword.take(header) |> Keyword.values())
+      )
 
     with %Xandra.Page{} = page <- Xandra.execute!(Conn, batch) do
       pages = Enum.to_list(page)
