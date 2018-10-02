@@ -152,15 +152,16 @@ defmodule EctoCassandra.Planner do
         _on_conflict,
         _returning,
         opts
-      ) do
+      ),
+      do: do_insert(table, schema, sources, opts)
+
+  defp do_insert(table, schema, sources, opts) do
     statement = Query.new(insert: {table, sources, opts})
     prepared_sources = prepare_sources(schema, sources)
 
-    with true <- Keyword.get(opts, :execute, true),
-         {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources) do
+    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, prepared_sources) do
       {:ok, []}
     else
-      false -> [statement, prepared_sources]
       {:ok, %Xandra.Page{} = page} -> check_applied(page)
       err -> err
     end
@@ -178,6 +179,15 @@ defmodule EctoCassandra.Planner do
         _returning,
         opts
       ) do
+    batch_mode = Keyword.get(opts, :batch, false)
+
+    case batch_mode in ~w(logged unlogged counter)a do
+      true -> do_batch_insert_all(table, header, rows, opts)
+      false -> do_insert_all(table, schema, rows, opts)
+    end
+  end
+
+  defp do_batch_insert_all(table, header, rows, opts) do
     prepared = Xandra.prepare!(Conn, Query.new(insert_all: {table, header, opts}))
 
     batch =
@@ -187,10 +197,13 @@ defmodule EctoCassandra.Planner do
         &Batch.add(&2, prepared, &1 |> Keyword.take(header) |> Keyword.values())
       )
 
-    with %Xandra.Page{} = page <- Xandra.execute!(Conn, batch) do
-      pages = Enum.to_list(page)
-      {length(pages), pages}
-    end
+    with %Xandra.Void{} <- Xandra.execute!(Conn, batch), do: {:ok, []}
+  end
+
+  defp do_insert_all(table, schema, rows, opts) do
+    result = for row <- rows, do: do_insert(table, schema, row, opts)
+
+    {length(result), []}
   end
 
   @spec update(repo, schema_meta, fields, filters, returning, options) ::
@@ -201,11 +214,9 @@ defmodule EctoCassandra.Planner do
     statement = Query.new(update: {table_name, params, filter, opts})
     sources = prepare_sources(schema, params)
 
-    with true <- Keyword.get(opts, :execute, true),
-         {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
+    with {:ok, %Xandra.Void{}} <- Xandra.execute(Conn, statement, sources) do
       {:ok, []}
     else
-      false -> [statement, sources]
       {:error, any} -> {:invalid, any}
     end
   end
@@ -217,12 +228,10 @@ defmodule EctoCassandra.Planner do
   def delete(_repo, %{source: {nil, table_name}}, filters, opts) do
     statement = Query.delete({table_name, filters, opts})
 
-    with true <- Keyword.get(opts, :execute, true),
-         %Xandra.Void{} <- Xandra.execute!(Conn, statement) do
+    with %Xandra.Void{} <- Xandra.execute!(Conn, statement) do
       {:ok, []}
     else
       {:ok, %Xandra.Page{} = page} -> check_applied(page)
-      false -> [statement, []]
       err -> {:invalid, err}
     end
   end
