@@ -14,6 +14,9 @@ defmodule EctoCassandra.Storage do
     with {:ok, conn} <- Xandra.start_link(options),
          {:ok, %{effect: "CREATED"}} <- Xandra.execute(conn, command) do
       :ok
+    else
+      {:error, %{reason: :already_exists}} -> {:error, :already_up}
+      err -> err
     end
   end
 
