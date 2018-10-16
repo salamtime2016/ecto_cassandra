@@ -67,7 +67,12 @@ defmodule EctoCassandra.Query do
   end
 
   def new(update_all: %{from: {table, _}, updates: updates, wheres: wheres}) do
-    set = Enum.map_join(updates, ", ", &parse_update(&1.expr))
+    set =
+      updates
+      |> Enum.map(&parse_update(&1.expr))
+      |> List.flatten()
+      |> Enum.join(", ")
+
     new(update: {table, "SET #{set}", wheres, []})
   end
 
