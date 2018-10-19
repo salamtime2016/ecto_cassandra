@@ -107,8 +107,8 @@ defmodule EctoCassandra.Query do
     "SELECT * FROM #{table}"
   end
 
-  def all(%Q{from: {table, _}, wheres: wheres}, _opts) do
-    "SELECT * FROM #{table} WHERE #{where(wheres)}"
+  def all(%Q{from: {table, _}, wheres: wheres, limit: limit}, _opts) do
+    "SELECT * FROM #{table} WHERE #{where(wheres)} #{limit(limit)}"
   end
 
   @spec parse_opts(keyword) :: String.t()
@@ -169,6 +169,10 @@ defmodule EctoCassandra.Query do
     ""
   end
 
+  defp limit(%{expr: nil}), do: ""
+
+  defp limit(%{expr: expr}), do: "LIMIT #{parse_expr(expr)}"
+
   defp parse_expr({{:., [], [{:&, _, _}, key]}, _, _}) do
     key
   end
@@ -188,6 +192,10 @@ defmodule EctoCassandra.Query do
 
   defp parse_expr({arg, [], [left, right]}) do
     "#{parse_expr(left)} #{@operators_map[arg]} #{parse_expr(right)}"
+  end
+
+  defp parse_expr(expr) do
+    expr
   end
 
   defp compose_columns([{:add, column, type, _options} | commands]) do
