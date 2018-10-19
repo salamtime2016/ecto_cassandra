@@ -169,9 +169,8 @@ defmodule EctoCassandra.Query do
     ""
   end
 
-  defp limit(%{expr: nil}), do: ""
-
-  defp limit(%{expr: expr}), do: "LIMIT #{parse_expr(expr)}"
+  defp limit(%{expr: expr}) when not is_nil(expr), do: "LIMIT #{parse_expr(expr)}"
+  defp limit(_), do: ""
 
   defp parse_expr({{:., [], [{:&, _, _}, key]}, _, _}) do
     key
