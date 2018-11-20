@@ -33,6 +33,7 @@ defmodule EctoCassandra.MixProject do
       {:db_connection, "~> 2.0", override: true},
       {:dialyxir, "~> 1.0.0-rc.3", only: ~w(dev test)a, runtime: false},
       {:ecto, "~> 3.0"},
+      {:ecto_sql, "~> 3.0"},
       {:ex_doc, "~> 0.14", only: :dev},
       {:ex_machina, "~> 2.2", only: :test},
       {:excoveralls, "~> 0.8", only: :test},
