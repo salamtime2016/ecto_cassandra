@@ -29,7 +29,7 @@ defmodule EctoCassandra.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:credo, "~> 0.10.0", only: ~w(dev test)a},
+      {:credo, "~> 1.0", only: ~w(dev test)a},
       {:db_connection, "~> 2.0", override: true},
       {:dialyxir, "~> 1.0.0-rc.3", only: ~w(dev test)a, runtime: false},
       {:ecto, "~> 3.0"},

@@ -8,6 +8,8 @@ defmodule EctoCassandra.Planner do
   alias Xandra.Batch
 
   @behaviour Ecto.Adapter
+  @behaviour Ecto.Adapter.Schema
+  @behaviour Ecto.Adapter.Queryable
 
   @type t :: EctoCassandra.Adapter.Planner
 
@@ -25,6 +27,7 @@ defmodule EctoCassandra.Planner do
           autogenerate_id: {atom, :id | :binary_id}
         }
 
+  @type adapter_meta() :: Ecto.Adapter.adapter_meta()
   @type query :: Ecto.Query.t()
   @type source :: {prefix :: binary | nil, table :: binary}
   @type fields :: Keyword.t()
@@ -44,9 +47,36 @@ defmodule EctoCassandra.Planner do
   @typep repo :: Ecto.Repo.t()
   @typep options :: Keyword.t()
 
+  @impl true
   @doc false
   defmacro __before_compile__(_env), do: :ok
 
+  @doc false
+  @impl true
+  @spec init(config :: keyword) :: {:ok, :supervisor.child_spec(), adapter_meta()}
+  def init(config) do
+    keyspace = Keyword.fetch!(config, :keyspace)
+
+    opts =
+      Keyword.merge(config,
+        name: EctoCassandra.Conn,
+        after_connect: &Xandra.execute(&1, "USE #{keyspace}")
+      )
+
+    spec = Supervisor.Spec.worker(Xandra, [opts], restart: :permanent)
+
+    {:ok, spec, %{pid: self()}}
+  end
+
+  @doc false
+  @impl true
+  @spec checkout(adapter_meta(), options :: Keyword.t(), (() -> result)) :: result
+        when result: var
+  def checkout(_adapter_meta, _options, function) do
+    function.()
+  end
+
+  @impl true
   @spec ensure_all_started(any, type :: Application.restart_type()) ::
           {:error, atom} | {:ok, [atom()]}
   def ensure_all_started(_repo, _type) do
@@ -57,22 +87,10 @@ defmodule EctoCassandra.Planner do
     end
   end
 
-  @spec child_spec(any, keyword) :: Supervisor.Spec.spec()
-  def child_spec(_repo, opts) do
-    keyspace = Keyword.fetch!(opts, :keyspace)
-
-    opts =
-      Keyword.merge(opts,
-        name: EctoCassandra.Conn,
-        after_connect: &Xandra.execute(&1, "USE #{keyspace}")
-      )
-
-    Supervisor.Spec.worker(Xandra, [opts], restart: :permanent)
-  end
-
   @doc """
   Automatically generate next ID for binary keys, leave sequence keys empty for generation on insert.
   """
+  @impl true
   @spec autogenerate(:binary_id | :embed_id) :: <<_::288>>
   def autogenerate(:embed_id) do
     Elixir.UUID.uuid1()
@@ -89,6 +107,7 @@ defmodule EctoCassandra.Planner do
     )
   end
 
+  @impl true
   @spec prepare(atom :: :all | :update_all | :delete_all, query) ::
           {:cache, Xandra.Prepared.t()} | no_return
   def prepare(:all, query) do
@@ -96,12 +115,14 @@ defmodule EctoCassandra.Planner do
     {:cache, prepared}
   end
 
+  @impl true
   def prepare(operation, query) do
     prepared = Xandra.prepare!(Conn, EctoCassandra.Query.new([{operation, query}]))
 
     {:cache, prepared}
   end
 
+  @impl true
   @spec execute(repo, query_meta, query, params :: list, process | nil, options) :: result
         when result: {integer, [[term]] | nil} | no_return,
              query:
@@ -141,6 +162,7 @@ defmodule EctoCassandra.Planner do
     end
   end
 
+  @impl true
   @spec insert(repo, schema_meta, fields, on_conflict, returning, options) ::
           {:ok, fields}
           | {:invalid, constraints}
@@ -167,6 +189,7 @@ defmodule EctoCassandra.Planner do
     end
   end
 
+  @impl true
   @spec insert_all(repo, schema_meta, header :: [atom], [fields], any, returning, options) ::
           {integer, [[term]] | nil}
           | no_return
@@ -206,6 +229,7 @@ defmodule EctoCassandra.Planner do
     {length(result), []}
   end
 
+  @impl true
   @spec update(repo, schema_meta, fields, filters, returning, options) ::
           {:ok, fields}
           | {:invalid, constraints}
@@ -221,6 +245,7 @@ defmodule EctoCassandra.Planner do
     end
   end
 
+  @impl true
   @spec delete(repo, schema_meta, filters, options) ::
           {:ok, fields}
           | {:invalid, constraints}
@@ -236,6 +261,7 @@ defmodule EctoCassandra.Planner do
     end
   end
 
+  @impl true
   @spec loaders(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]
@@ -252,6 +278,7 @@ defmodule EctoCassandra.Planner do
   def loaders(type, _) when type in ~w(utc_datetime naive_datetime)a, do: [&to_dt/1]
   def loaders(_primitive, type), do: [type]
 
+  @impl true
   @spec dumpers(primitive_type :: Ecto.Type.primitive(), ecto_type :: Ecto.Type.t()) :: [
           (term -> {:ok, term} | :error) | Ecto.Type.t()
         ]

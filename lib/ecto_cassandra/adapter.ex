@@ -15,10 +15,13 @@ defmodule EctoCassandra.Adapter do
   defmacro __before_compile__(_env), do: :ok
 
   @doc false
-  defdelegate ensure_all_started(repo, type), to: @adapter
+  defdelegate checkout(adapter_meta, options, function), to: @adapter
 
   @doc false
-  defdelegate child_spec(repo, opts), to: @adapter
+  defdelegate init(config), to: @adapter
+
+  @doc false
+  defdelegate ensure_all_started(repo, type), to: @adapter
 
   @doc false
   defdelegate prepare(operation, query), to: @adapter
@@ -101,6 +104,16 @@ defmodule EctoCassandra.Adapter do
 
   @doc false
   def supports_ddl_transaction?, do: false
+
+  @doc false
+  @spec lock_for_migrations(
+          Ecto.Adapter.adapter_meta(),
+          Ecto.Query.t(),
+          options :: Keyword.t(),
+          fun
+        ) :: no_return
+  def lock_for_migrations(_adapter_meta, _arg1, _options, _fun),
+    do: raise(RuntimeError, "Can't lock the migrations tables")
 
   @behaviour Ecto.Adapter.Structure
 
